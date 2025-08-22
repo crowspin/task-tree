@@ -47,3 +47,5 @@ The minimum viable product of this project will be that I'm able to produce a we
 ## Final Note:
 Ahead of actually starting this project I want to say, mainly to myself: ***DO NOT EXPECT POLISH.*** The project guideline says it should take 20-40 hours. Don't make this a two month task for yourself, it doesn't need to be beautiful, it only needs to work. The quiet, secondary goal will be to integrate this into the homepage that doesn't currently exist as part of the backend. And then *someday* we might reach for the tertiary goal of releasing it as an app. For now though: just target MVP and move on. The checklist above could be easy or it could be very hard, and we know that. If'n ye wanna finish Boot.Dev before the subscription runs out, then make it snappy.  
 Maybe I'll be able to convince the course to accept a link to the gitlab, or I'll make this private after I've submitted it and wait to be contacted on the matter. It's my one pet peeve about software development: If you want to make money on your creations *it seems* you need to guard your thoughts like gold. I hope someday to be proven wrong on that.
+
+test commit streak again
