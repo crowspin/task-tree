@@ -21,6 +21,7 @@ The minimum viable product of this project will be that I'm able to produce a we
   - [ ] In PWA mode should support swipe-actions (swipe left to delete, swipe right to add to your day, etc)(configurable)
 - [ ] Consider possibility of making lists accessible to multiple people for group projects
 - [ ] Readme needs to explain how to clone and run
+- [ ] Should have the option for categories in any list-like placement
 
 ##### Tasks should...
 - [ ] Have 'completion' boolean

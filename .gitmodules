@@ -1,0 +1,3 @@
+[submodule "lib/crowlib-php"]
+	path = lib/crowlib-php
+	url = https://github.com/crowspin/crowlib-php.git
