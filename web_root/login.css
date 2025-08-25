@@ -1,0 +1,14 @@
+body {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    height: 100vh;
+    margin: 0;
+}
+block.center {
+    display: flex;
+    align-self: center;
+}
+form {
+    text-align: center;
+}
