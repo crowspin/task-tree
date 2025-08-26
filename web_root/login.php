@@ -1,16 +1,40 @@
 <?php
-#session start
-    if (isset($_POST['submit'])){
-        echo $_POST['un'] . " " . $_POST['pw'];
-        #check fail count in session (gt 5, auto fail)
-        #clean inputs
-        #initialize connection to database
-        #if fail > simple error page
-        #test inputs against database
-        #if successful > set username in session
-        #else(fail) > increment fail count in session and display error
+
+require_once $_SERVER["DOCUMENT_ROOT"] . "lib/crowlib-php/crowSession.php";
+
+if (!crow\openSession()){
+    //error
+}
+
+if (!isset($_SESSION["login"]["failed_attempts"])){
+    $_SESSION["login"]["failed_attempts"] = 0;
+}
+
+if ($_SESSION["login"]["failed_attempts"] >= 5){
+    //fail login automatically..
+} else {
+    if (isset($_POST["submit"])){
+        $username = clean($_POST["un"]);
+        $password = clean($_POST["pw"]);
+
+        $sql = crow\SQL...
+        if (!$sql){
+            //error page
+        }
+
+        $rv = $sql::query_clean("");
+        if ($rv && $rv.count == 1){
+            $_SESSION["login"]["username"] = $username;
+        } else {
+            $_SESSION["login"]["failed_attempts"] += 1;
+            //error page
+        }
     }
-#if username already set in session, redirect
+}
+
+if ($_SESSION["login"]["username"]){
+    crow\redirect("\applet.php");
+}
 ?>
 
 <html>
