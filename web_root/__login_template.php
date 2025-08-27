@@ -1,6 +1,6 @@
 <html>
     <head>
-        <title>TaskTree - Login</title>
+        <title>TaskTree - Login</title> 
         <link rel="stylesheet" href="login.css">
     </head>
     <body>
