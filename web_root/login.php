@@ -1,13 +1,16 @@
 <?php
 
-require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/crowSession.php";
-require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/f/scrub_login.php";
-require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/f/assert_strlen.php";
+require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/GLOBALS.php";
+require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/Session/open.php";
+require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/Auth/Scrub/textbox.php";
+require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/Assert/strlen.php";
+require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/Header/redirect.php";
+require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/SQL/Factory.php";
 
 $ERROR_MESSAGE = "";
 $LOCK_FIELDS = false;
 
-if (!crow\openSession()){
+if (!crow\Session\open()){
     $ERROR_MESSAGE = crow\ErrorMsg::$_[3];
     $LOCK_FIELDS = true;
 }
@@ -23,21 +26,21 @@ if ($_SESSION["login"]["failed_attempts"] >= 5){
     if (isset($_POST["submit"])){
         if (
             isset($_POST["un"])
-            && crow\assert_strlen($_POST["un"], 1, 32)
+            && crow\Assert\strlen($_POST["un"], 1, 32)
             && isset($_POST["pw"])
-            && crow\assert_strlen($_POST["pw"], 8, 40)
+            && crow\Assert\strlen($_POST["pw"], 8, 40)
         ){
-            $username = crow\login\scrub_TBX($_POST["un"]);
-            $password = crow\login\scrub_TBX($_POST["pw"]);
+            $username = crow\Auth\Scrub\textbox($_POST["un"]);
+            $password = crow\Auth\Scrub\textbox($_POST["pw"]);
 
-            $sql = crow\SQL;
-            if (!$sql){
+            $conn = crow\SQL\Factory::get();
+            if (!$conn){
                 $ERROR_MESSAGE = crow\ErrorMsg::$_[0];
             }
 
-            $rv = $sql::query_clean("SELECT * FROM _users WHERE `username`='$username' LIMIT 1");
-            if ($rv && $rv.count == 1){
-                //$_SESSION["login"]["username"] = $username;
+            $data = $conn->query("SELECT * FROM _users WHERE `username`='%0' LIMIT 1", [$username]);
+            if ($data->success && count($data) == 1){
+                //! $_SESSION["login"]["username"] = $username;
             } else {
                 $_SESSION["login"]["failed_attempts"] += 1;
                 $ERROR_MESSAGE = crow\ErrorMsg::$_[2];
@@ -50,9 +53,9 @@ if ($_SESSION["login"]["failed_attempts"] >= 5){
 }
 
 if ($_SESSION["login"]["username"]){
-    crow\redirect("\applet.php");
+    crow\Header\redirect("\applet.php");
 }
 
-include "__login_template.php";
+include __DIR__ . "/templates/login.php";
 
 //! TODO: After re-implementation of crowSQL, look through xAuth and pbAuth for login attempt functions. Comment above would confirm login without even testing password lolol
