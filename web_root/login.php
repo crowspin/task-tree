@@ -36,14 +36,14 @@ if ($_SESSION["login"]["failed_attempts"] >= 5){
             $conn = crow\SQL\Factory::get();
             if (!$conn){
                 $ERROR_MESSAGE = crow\ErrorMsg::$_[0];
-            }
-
-            $data = $conn->query("SELECT * FROM _users WHERE `username`='%0' LIMIT 1", [$username]);
-            if ($data->success && count($data) == 1){
-                //! $_SESSION["login"]["username"] = $username;
             } else {
-                $_SESSION["login"]["failed_attempts"] += 1;
-                $ERROR_MESSAGE = crow\ErrorMsg::$_[2];
+                $data = $conn->query("SELECT * FROM _users WHERE `username`='%0' LIMIT 1", [$username]);
+                if ($data->success && count($data) == 1){
+                    $_SESSION["login"]["username"] = $username;
+                } else {
+                    $_SESSION["login"]["failed_attempts"] += 1;
+                    $ERROR_MESSAGE = crow\ErrorMsg::$_[2];
+                }
             }
         } else {
             $_SESSION["login"]["failed_attempts"] += 1;
@@ -52,10 +52,15 @@ if ($_SESSION["login"]["failed_attempts"] >= 5){
     }
 }
 
-if ($_SESSION["login"]["username"]){
+if (!empty($_SESSION["login"]["username"])){
     crow\Header\redirect("\applet.php");
 }
 
 include __DIR__ . "/templates/login.php";
 
 //! TODO: After re-implementation of crowSQL, look through xAuth and pbAuth for login attempt functions. Comment above would confirm login without even testing password lolol
+/**
+ * $ERROR_MESSAGE not printing when sql fails
+ * sql fails
+ * 
+ */
