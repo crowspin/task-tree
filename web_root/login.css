@@ -8,6 +8,7 @@ body {
 block.center {
     display: flex;
     align-self: center;
+    flex-direction: column;
 }
 form {
     text-align: center;

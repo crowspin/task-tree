@@ -63,4 +63,6 @@ include __DIR__ . "/templates/login.php";
  * $ERROR_MESSAGE not printing when sql fails
  * sql fails
  * 
+ * $ERROR_MESSAGE not displaying because server configuration does not support php short tags. Will fix later.
+ * 
  */

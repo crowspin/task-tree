@@ -7,7 +7,7 @@
         <block class="center">
             <?
                 require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/GLOBALS.php";
-                if (isset($_GET['e'])){
+                if (!empty($_GET['e'])){
                     $ERROR_MESSAGE = crow\ErrorMsg::$_[$_GET['e']];
                     $LOCK_FIELDS = true;
                 }
