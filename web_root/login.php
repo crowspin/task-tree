@@ -10,8 +10,6 @@ require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/SQL/Factory.php";
 $ERROR_MESSAGE = "";
 $LOCK_FIELDS = false;
 
-print_r($_ENV);
-
 if (!crow\Session\open()){
     $ERROR_MESSAGE = crow\ErrorMsg::$_[3];
     $LOCK_FIELDS = true;
@@ -55,9 +53,9 @@ if ($_SESSION["login"]["failed_attempts"] >= 5){
 }
 
 if (!empty($_SESSION["login"]["username"])){
-    crow\Header\redirect("\applet.php");
+    crow\Header\redirect("/applet.php");
 }
-//include __DIR__ . "/templates/login.php";
+include __DIR__ . "/templates/login.php";
 
 //! TODO: After re-implementation of crowSQL, look through xAuth and pbAuth for login attempt functions. Comment above would confirm login without even testing password lolol
 /**
@@ -72,5 +70,7 @@ if (!empty($_SESSION["login"]["username"])){
  * Attempt failed, tried setting clear_env = no for petc/sysconfig/phphp-fpm.conf as well, still no success.
  * Tried the same again but this time in /etc/php/8.2/fpm/pool.d/www.conf
  * Still no joy
- * 
+ * Seems like at least with FPM I'll need to manually set the variables in the www.conf file mentioned before as well. rip.
+ * Now the variables are declared, but not set. It's 100% an FPM issue, but boy is it getting me mad.
+ * When I redeploy the webserver to my new machine, I'm dropping FPM. For now I'm going to just use the fallback option and work with the ini file.
  */
