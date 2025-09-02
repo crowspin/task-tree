@@ -39,7 +39,21 @@ if ($_SESSION["login"]["failed_attempts"] >= 5){
             } else {
                 $data = $conn->query("SELECT * FROM _users WHERE `username`='%0' LIMIT 1", [$username]);
                 if ($data->success && count($data) == 1){
-                    $_SESSION["login"]["username"] = $username;
+                    $data->map_to_column('username');
+                    
+                    if (password_verify($password, $data[$username]['password'])){
+                        if (password_needs_rehash($data[$username]['password'], PASSWORD_DEFAULT, crow\PASSWORD_OPTIONS)){
+                            $newHash = password_hash($password, PASSWORD_DEFAULT, crow\PASSWORD_OPTIONS);
+                            $q2 = $xS->query_clean("UPDATE _users SET `password`='%0' WHERE `username`='%1'", [$newHash, $username]);
+                            if (!$q2->success){
+                                //log password hash update failure, continue anyway.
+                            }
+                        }
+                        $_SESSION['login']['username'] = $username;
+                    } else {
+                        $_SESSION["login"]["failed_attempts"] += 1;
+                        $ERROR_MESSAGE = crow\ErrorMsg::$_[2];
+                    }
                 } else {
                     $_SESSION["login"]["failed_attempts"] += 1;
                     $ERROR_MESSAGE = crow\ErrorMsg::$_[2];
@@ -73,4 +87,10 @@ include __DIR__ . "/templates/login.php";
  * Seems like at least with FPM I'll need to manually set the variables in the www.conf file mentioned before as well. rip.
  * Now the variables are declared, but not set. It's 100% an FPM issue, but boy is it getting me mad.
  * When I redeploy the webserver to my new machine, I'm dropping FPM. For now I'm going to just use the fallback option and work with the ini file.
+ * An aside about that redeploy (I'll leave it here because I'm also leaving the config notes), Apparently it's not an uncommon practice to git diff the /etc directory for tracking configuration changes. Should do that next time around.
+ * 
+ * This would've been much wiser to arrange as a function that could return a tuple of (bool, int) for (success, errno). Then instead of stepping deeper and
+ * deeper in scope I could've just returned on fail and in the calling scope I could've just used a switch case or passed that errno to the (painfully)
+ * repeated $ERROR_MESSAGE calls above. All that said though, I am *trying* to speed along and actually make the TaskTree concept so I can get back to lessons
+ * and that's going to mean skipping some bits. Long story short, login works as expected, I'm moving on.
  */
