@@ -5,9 +5,9 @@ This will be my "first" personal project produced for Boot.dev. I'd prefer to ke
 The minimum viable product of this project will be that I'm able to produce a webpage with buttons that enable interaction with a list of different "task" items. Tasks should have name strings, completion toggles, urgency markers, and a priority ranking in the list. As a major change to Microsoft's style, I intend to change from their system of holding subtasks as simple strings to a multi-parent system. Each task can be promoted to a list or a category, or demoted to a step of another task without losing any of the other associated data. Subtasks can have longform comments, explanations, urgency, due-dates, etc. Categories and lists can be 'completed' and will be separated from uncompleted collections accordingly. The whole tool should be able to run as a PWA additionally.
 
 ## Feature List / Checklist:
-- [ ] Refactor Login class and MySQL interface layer (backend)
-- [ ] Create Login page for testing
-- [ ] Add 2FA functionality compatible with standard authenticator apps
+- [x] Refactor Login class and MySQL interface layer (backend)
+- [x] Create Login page for testing
+- [ ] ~~Add 2FA functionality compatible with standard authenticator apps~~
 - [ ] Build basic webpage with static sidebar
   - [ ] Sidebar lists tasks upgraded to "Lists"
   - [ ] Lists can be categorized as well
