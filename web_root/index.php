@@ -44,4 +44,18 @@ echo "Hello " . $_SESSION["login"]["username"] . "! You have logged in successfu
  * 
  * I'm going to be passing on any and all Javascript operations here, I don't want to deal with that at this junction. Not using XHRs is going to make the page 
  * feel pretty darn clunky, but I want a functioning prototype, not a finished product.
+ * 
+ * Feel like closeSession should refresh the page if no destination is supplied instead of redirecting to /login or webroot without any choice to stay put.
  */
+//
+
+/**
+ * Operation plan: first we're just going to set up the database with tables for my user, then we'll do a 'pretty print' of listed tasks as a tree
+ * We'll likely need to create a method to add tasks to the tree between those two operations.
+ * And for the sake of making the whole thing a little lighter on my brain, we'll stop there.
+ */
+
+if (!($sql = loadTasks())){
+    createTable();
+}
+

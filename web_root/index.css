@@ -1,0 +1,65 @@
+body {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  margin: 1vh;
+}
+div.container {
+  align-self: center;
+  display: grid;
+  grid-template-areas: "head head"
+                       "sidebar main";
+  grid-template-columns: 250px auto;
+  grid-template-rows: 10vh auto;
+  gap: 15px;
+  padding: 15px;
+  max-width: 1750px;
+  width: 100%;
+  min-height: calc(98vh - (15px*2));
+}
+div.head {
+  grid-area: head;
+  font-size: 8vh;
+}
+div.head small {
+  font-size: 3vh;
+}
+div.head options {
+  font-size: 2vh;
+  float: right;
+}
+div.sidebar {
+  grid-area: sidebar;
+  background-color:#EEE;
+  padding: 1vh;
+}
+div.sidebar li {
+  display: block;
+  margin: 1vh;
+  text-decoration: underline;
+}
+div.sidebar li img {
+  width: 0.9em;
+  height: 0.9em;
+  margin-right: 0.5em;
+}
+div.main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+}
+div.main :first-child {
+  margin-top: 0;
+}
+div.main :last-child {
+  margin-bottom: 0;
+}
+div.main > li {
+  display: flex;
+  flex-direction: row;
+  gap: 1vh;
+  background-color: #DDD;
+  padding: 2vh;
+  margin: 1vh 0;
+  border-radius: 4px;
+}

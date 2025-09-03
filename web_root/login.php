@@ -67,7 +67,7 @@ if ($_SESSION["login"]["failed_attempts"] >= 5){
 }
 
 if (!empty($_SESSION["login"]["username"])){
-    crow\Header\redirect("/applet.php");
+    crow\Header\redirect("/index.php");
 }
 include __DIR__ . "/templates/login.php";
 
