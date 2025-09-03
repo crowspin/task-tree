@@ -5,7 +5,7 @@ require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/Session/open.php";
 require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/Auth/Scrub/textbox.php";
 require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/Assert/strlen.php";
 require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/Header/redirect.php";
-require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/SQL/Factory.php";
+require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/IO/SQLFactory.php";
 
 $ERROR_MESSAGE = "";
 $LOCK_FIELDS = false;
@@ -33,23 +33,23 @@ if ($_SESSION["login"]["failed_attempts"] >= 5){
             $username = crow\Auth\Scrub\textbox($_POST["un"]);
             $password = crow\Auth\Scrub\textbox($_POST["pw"]);
 
-            $conn = crow\SQL\Factory::get();
+            $conn = crow\IO\SQLFactory::get();
             if (!$conn){
                 $ERROR_MESSAGE = crow\ErrorMsg::$_[0];
             } else {
                 $data = $conn->query("SELECT * FROM _users WHERE `username`='%0' LIMIT 1", [$username]);
                 if ($data->success && count($data) == 1){
-                    $data->map_to_column('username');
+                    $data->map_to_column("username");
                     
-                    if (password_verify($password, $data[$username]['password'])){
-                        if (password_needs_rehash($data[$username]['password'], PASSWORD_DEFAULT, crow\PASSWORD_OPTIONS)){
+                    if (password_verify($password, $data[$username]["password"])){
+                        if (password_needs_rehash($data[$username]["password"], PASSWORD_DEFAULT, crow\PASSWORD_OPTIONS)){
                             $newHash = password_hash($password, PASSWORD_DEFAULT, crow\PASSWORD_OPTIONS);
                             $q2 = $xS->query_clean("UPDATE _users SET `password`='%0' WHERE `username`='%1'", [$newHash, $username]);
                             if (!$q2->success){
                                 //log password hash update failure, continue anyway.
                             }
                         }
-                        $_SESSION['login']['username'] = $username;
+                        $_SESSION["login"]["username"] = $username;
                     } else {
                         $_SESSION["login"]["failed_attempts"] += 1;
                         $ERROR_MESSAGE = crow\ErrorMsg::$_[2];
