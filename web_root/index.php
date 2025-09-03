@@ -55,7 +55,8 @@ echo "Hello " . $_SESSION["login"]["username"] . "! You have logged in successfu
  * And for the sake of making the whole thing a little lighter on my brain, we'll stop there.
  */
 
-if (!($sql = loadTasks())){
-    createTable();
-}
+//if (!($sql = loadTasks())){
+//    createTable();
+//}
 
+include __DIR__ . "/templates/index.php";
