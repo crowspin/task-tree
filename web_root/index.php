@@ -55,8 +55,58 @@ echo "Hello " . $_SESSION["login"]["username"] . "! You have logged in successfu
  * And for the sake of making the whole thing a little lighter on my brain, we'll stop there.
  */
 
-//if (!($sql = loadTasks())){
-//    createTable();
-//}
+$sql = crow\IO\SQLFactory::get();
+if (!$sql){
+    //no sql connection
+}
+
+$query_return = $sql->query("SELECT * FROM tasks_%0", [$_SESSION["login"]["username"]]);
+if (!$query_return->success){
+    //query failed
+}
+
+class TreeNode {
+    public int $id;
+    public array $parents = [];
+    public array $children = [];
+    public array $row;
+
+    function __construct($row) {
+        $this->row = $row;
+        $this->id = $row["id"];
+        $this->parents = TreeNode::split($row["parents"]);
+        $this->children = TreeNode::split($row["children"]);
+    }
+
+    public static function split($string): array {
+        $array_a = explode("*", $string);
+        $array_b = [];
+        foreach ($array_a as $s) if (!empty($s)) $array_b[] = $s;
+        return $array_b;
+    }
+}
+
+$tree_nodes = [];
+$root_node_ids = [];
+foreach ($query_return as $i=>$row) {
+    $tree_nodes[$row["id"]] = new TreeNode($row);
+    if ($row["parents"] == "*"){
+        $root_node_ids[] = $row["id"];
+    }
+}
+
+//so at this point we know the entry points and can refer to the $tree_nodes array using integer keys from parents or children arrays in each node for traversal or identification.
+//the only columns we expect on the table at this moment are "id parents children"
+//table name is tasks_USERNAME, this could be problematic, we'll need to check about input safety for that. Alternate option would be to use row ID instead of username from users table.
+
+$SIDEBAR = [];
+$this_page = null;
+foreach ($root_node_ids as $id){
+    $SIDEBAR[$id] = $tree_nodes[$id]->children;
+    if ($this_page == null) $this_page = $SIDEBAR[$id][0]
+}
+if (!empty($_GET["listID"])) $this_page = $_GET["listID"];
+
+//use $this_page as id in tree_nodes to find task groups and then tasks on current page, as $this_page is row id of a task list
 
 include __DIR__ . "/templates/index.php";

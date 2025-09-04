@@ -20,7 +20,7 @@
             </div>
             <div class='main'>
                 <li>
-                    <input type=checkbox id="li0"/>
+                    <input type=checkbox onclick="location.href='neener.php'" id="li0"/>
                     <label for="li0">asdf</label>
                 </li>
                 <li>
