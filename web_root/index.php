@@ -55,147 +55,28 @@ echo "Hello " . $_SESSION["login"]["username"] . "! You have logged in successfu
  * And for the sake of making the whole thing a little lighter on my brain, we'll stop there.
  */
 
-$sql = crow\IO\SQLFactory::get();
-if (!$sql){
-    //no sql connection
-}
-
-
-
-
-
-
-
-
-
-
-$query_return = $sql->query("SELECT * FROM tasks_%0", [$_SESSION["login"]["username"]]);
-if (!$query_return->success){
-    //query failed
-}
-
-class TreeNode {
-    public int $id;
-    public array $parents = [];
-    public array $children = [];
-    public array $row;
-
-    function __construct($row) {
-        $this->row = $row;
-        $this->id = $row["id"];
-        $this->parents = TreeNode::split($row["parents"]);
-        $this->children = TreeNode::split($row["children"]);
-    }
-
-    public static function split($string): array {
-        $array_a = explode("*", $string);
-        $array_b = [];
-        foreach ($array_a as $s) if (!empty($s)) $array_b[] = $s;
-        return $array_b;
-    }
-}
-
-$tree_nodes = [];
-$root_node_ids = [];
-foreach ($query_return as $i=>$row) {
-    $tree_nodes[$row["id"]] = new TreeNode($row);
-    if ($row["parents"] == "*"){
-        $root_node_ids[] = $row["id"];
-    }
-}
-
-//so at this point we know the entry points and can refer to the $tree_nodes array using integer keys from parents or children arrays in each node for traversal or identification.
-//the only columns we expect on the table at this moment are "id parents children"
-//table name is tasks_USERNAME, this could be problematic, we'll need to check about input safety for that. Alternate option would be to use row ID instead of username from users table.
-
-$SIDEBAR = [];
-$this_page = null;
-foreach ($root_node_ids as $id){
-    $SIDEBAR[$id] = $tree_nodes[$id]->children;
-    if ($this_page == null) $this_page = $SIDEBAR[$id][0];
-}
-if (!empty($_GET["listID"])) $this_page = $_GET["listID"];
-
-//use $this_page as id in tree_nodes to find task groups and then tasks on current page, as $this_page is row id of a task list
-
-
-
-
-
-
-
-
-class TreeNode2 {
-    public int $id;
-    public bool $is_group = false;
-    public array $children = [];
-    public array $row;
-
-    function __construct($row) {
-        $this->row = $row;
-        $this->id = $row["id"];
-        if ($row["bitflags"] % 1){
-            $this->is_group = true;
-            $this->children = $this->populate_group();
-        }
-    }
-
-    public static function split($string): array {
-        $array_a = explode("*", $string);
-        $array_b = [];
-        foreach ($array_a as $s) if (!empty($s)) $array_b[] = $s;
-        return $array_b;
-    }
-
-    public function populate_group(): array {
-        $sql = crow\IO\SQLFactory::get();
-        if (!$sql){
-            //no sql connection
-        }
-        $query_lists = $sql->query("SELECT * FROM `tasks_%0` WHERE CONTAINS(`parents`, '*%1*')", [$_SESSION["login"]["id"], $this->id]);
-        if (!$query_lists->success){
-            //query failed
-        }
-        $ret_group = [];
-        foreach ($query_lists as $row){
-            $ret_group[] = new TreeNode2($row);
-        }
-        return $ret_group;
-    }
-}
-
-$query_top_level = $sql->query("SELECT * FROM `tasks_%0` WHERE `parents`='*'", [$SESSION["login"]["id"]]);
-if (!$query_top_level->success){
-    //query failed
-}
-
-$SIDEBAR = [];
-foreach ($query_top_level as $row){
-    $SIDEBAR[] = new TreeNode2($row);
-}
-
-
 //Table now needs id, parent, children, bitflags
     //Unhappy with bitflags column, apparently I'm a psycho for wanting to do that because it's hard to read
     //Change bitflags to column(bit, is_group) mainly because I can't think of another boolean value we need to keep right now
 //Do we need double linkage? Or can we use another boolean to indicate root level? Or should we have a special row at position 0 that is itself 'root' just to hold children and order-of?
     //Double linkage offers some extra peace of mind for lost items, but whole-table traversal for M&S garbage collection wouldn't be difficult...
     //I don't think I really need doublelinkage, and boolean won't help with root order, so special row it is.
+    //Make sure special row has id 0 and is_group 1
 //Do we need to use the asterisks, or could we just do commas? What should the column type be?
     //yes, no, VarChar 512
 //Table structure changing to int(id), varchar512(children), bit(is_group)
 
-class TaskTree_Node {
+class ListTree_Node {
     public int $id;
-    public bool $is_group;
+    public bool $is_group = false;
     public array $children;
     public array $row;
 
-    function __construct($row, $populate){
+    function __construct($row){
         $this->id = $row["id"];
-        $this->is_group = $row["is_group"];
         $this->row = $row;
-        if ($populate){
+        if ($row["is_group"]){
+            $this->is_group = true;
             $this->populate_children();
         }
     }
@@ -215,9 +96,17 @@ class TaskTree_Node {
                 //query failed
             }
             foreach($query_children as $row){
-                $this->children[] = new TaskTree_Node($row, $row["is_group"]);
+                $this->children[] = new ListTree_Node($row);
             }
         }
+    }
+    
+    public function first(){
+        $position = $this->children[0];
+        while ($position->is_group){
+            $position = $position->children[0];
+        }
+        return $position->id;
     }
 }
 
@@ -231,6 +120,11 @@ if (!$query_root->success){
     //query failed
 }
 
-$SIDEBAR = new TaskTree_Node($query_root[0], true);
+$SIDEBAR = new ListTree_Node($query_root[0]);
+
+$this_page = $_GET["pg"] ?: $SIDEBAR->first() ?: null;
+if ($this_page == null){
+    //error, no page requested, no lists?
+}
 
 include __DIR__ . "/templates/index.php";
