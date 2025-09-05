@@ -50,6 +50,7 @@ if ($_SESSION["login"]["failed_attempts"] >= 5){
                             }
                         }
                         $_SESSION["login"]["username"] = $username;
+                        $_SESSION["login"]["id"] = $data[$username]["id"];
                     } else {
                         $_SESSION["login"]["failed_attempts"] += 1;
                         $ERROR_MESSAGE = crow\ErrorMsg::$_[2];

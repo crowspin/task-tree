@@ -60,6 +60,15 @@ if (!$sql){
     //no sql connection
 }
 
+
+
+
+
+
+
+
+
+
 $query_return = $sql->query("SELECT * FROM tasks_%0", [$_SESSION["login"]["username"]]);
 if (!$query_return->success){
     //query failed
@@ -103,10 +112,125 @@ $SIDEBAR = [];
 $this_page = null;
 foreach ($root_node_ids as $id){
     $SIDEBAR[$id] = $tree_nodes[$id]->children;
-    if ($this_page == null) $this_page = $SIDEBAR[$id][0]
+    if ($this_page == null) $this_page = $SIDEBAR[$id][0];
 }
 if (!empty($_GET["listID"])) $this_page = $_GET["listID"];
 
 //use $this_page as id in tree_nodes to find task groups and then tasks on current page, as $this_page is row id of a task list
+
+
+
+
+
+
+
+
+class TreeNode2 {
+    public int $id;
+    public bool $is_group = false;
+    public array $children = [];
+    public array $row;
+
+    function __construct($row) {
+        $this->row = $row;
+        $this->id = $row["id"];
+        if ($row["bitflags"] % 1){
+            $this->is_group = true;
+            $this->children = $this->populate_group();
+        }
+    }
+
+    public static function split($string): array {
+        $array_a = explode("*", $string);
+        $array_b = [];
+        foreach ($array_a as $s) if (!empty($s)) $array_b[] = $s;
+        return $array_b;
+    }
+
+    public function populate_group(): array {
+        $sql = crow\IO\SQLFactory::get();
+        if (!$sql){
+            //no sql connection
+        }
+        $query_lists = $sql->query("SELECT * FROM `tasks_%0` WHERE CONTAINS(`parents`, '*%1*')", [$_SESSION["login"]["id"], $this->id]);
+        if (!$query_lists->success){
+            //query failed
+        }
+        $ret_group = [];
+        foreach ($query_lists as $row){
+            $ret_group[] = new TreeNode2($row);
+        }
+        return $ret_group;
+    }
+}
+
+$query_top_level = $sql->query("SELECT * FROM `tasks_%0` WHERE `parents`='*'", [$SESSION["login"]["id"]]);
+if (!$query_top_level->success){
+    //query failed
+}
+
+$SIDEBAR = [];
+foreach ($query_top_level as $row){
+    $SIDEBAR[] = new TreeNode2($row);
+}
+
+
+//Table now needs id, parent, children, bitflags
+    //Unhappy with bitflags column, apparently I'm a psycho for wanting to do that because it's hard to read
+    //Change bitflags to column(bit, is_group) mainly because I can't think of another boolean value we need to keep right now
+//Do we need double linkage? Or can we use another boolean to indicate root level? Or should we have a special row at position 0 that is itself 'root' just to hold children and order-of?
+    //Double linkage offers some extra peace of mind for lost items, but whole-table traversal for M&S garbage collection wouldn't be difficult...
+    //I don't think I really need doublelinkage, and boolean won't help with root order, so special row it is.
+//Do we need to use the asterisks, or could we just do commas? What should the column type be?
+    //yes, no, VarChar 512
+//Table structure changing to int(id), varchar512(children), bit(is_group)
+
+class TaskTree_Node {
+    public int $id;
+    public bool $is_group;
+    public array $children;
+    public array $row;
+
+    function __construct($row, $populate){
+        $this->id = $row["id"];
+        $this->is_group = $row["is_group"];
+        $this->row = $row;
+        if ($populate){
+            $this->populate_children();
+        }
+    }
+
+    private function populate_children(){
+        $child_id_set = explode("*", substr($this->row["children"], 1, -1));
+        if (empty($child_id_set)) return;
+
+        $sql = crow\IO\SQLFactory::get();
+        if (!$sql){
+            //no sql connection
+        }
+
+        foreach ($child_id_set as $id){
+            $query_children = $sql->query("SELECT * FROM `tasks_%0` WHERE `id`='%1'", [$_SESSION["login"]["id"], $id]);
+            if (!$query_children->success){
+                //query failed
+            }
+            foreach($query_children as $row){
+                $this->children[] = new TaskTree_Node($row, $row["is_group"]);
+            }
+        }
+    }
+}
+
+$sql = crow\IO\SQLFactory::get();
+if (!$sql){
+    //no sql connection
+}
+
+$query_root = $sql->query("SELECT * FROM `tasks_%0` WHERE `id`='0'", [$SESSION["login"]["id"]]);
+if (!$query_root->success){
+    //query failed
+}
+
+$SIDEBAR = new TaskTree_Node($query_root[0], true);
 
 include __DIR__ . "/templates/index.php";
