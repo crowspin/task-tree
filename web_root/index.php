@@ -76,8 +76,8 @@ class TaskTree_Node {
     function __construct($row, $override_populate = false){
         $this->id = $row["id"];
         $this->row = $row;
+        $this->is_group = true;
         if ($row["is_group"] || $override_populate){
-            $this->is_group = true;
             $this->populate_children();
         }
     }
@@ -106,6 +106,10 @@ for ($i = 0; $i < count($children); $i++){
         //100 queries in a fraction of a second doesn't *sound* good, but operation cost should actually be low thanks to indexing?
         //Could use an IN() statement to reduce comparisons per row from nm (ln102) to just n (WHERE id IN (XX, XY, XZ, YX, YY...)) instead of (WHERE id=XX OR id=XY OR...)
         //Also, somewhere in the to-refactor codebase I remember using a function that encoded and decoded arrays much more reliably than this explode might be. Want to look that up, but not sure how searchable the encoded string would be.
+        //Options as of now for me to decide between then are (parent column + WHERE parents LIKE(row_id_blob)), (WHERE id IN(list_of_child_ids)), (pull whole table into php memory and skip database query problems giving up database optimized lookups..)
+        //parent column option could retain order from child column by sorting on column id using child column as reference, shouldn't be heavy operation, but want to avoid sort operations
+        //IN() option won't return items in order of child column anyway, sort would be neccesary either way.
+        //Feel like setting up a test environment to compare operation times, feel like the better option is obvious and I'm just a dope.
         foreach ($child_id_set as $id){
             $query_children = $sql->query("SELECT * FROM `tasks_%0` WHERE `id`='%1'", [$_SESSION["login"]["id"], $id]);
             if (!$query_children->success){
