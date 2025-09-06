@@ -2,6 +2,7 @@
 
 require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/Session/open.php";
 require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/Header/redirect.php";
+require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/IO/SQLFactory.php";
 
 if (!crow\Session\open()) die();
 if (empty($_SESSION["login"]["username"])) crow\Header\redirect("/login.php");
@@ -56,7 +57,7 @@ echo "Hello " . $_SESSION["login"]["username"] . "! You have logged in successfu
  */
 
 //Table now needs id, parent, children, bitflags
-    //Unhappy with bitflags column, apparently I'm a psycho for wanting to do that because it's hard to read
+    //Unhappy with bitflags column, apparently I'm a psycho for wanting to do that because it's 'hard to read'
     //Change bitflags to column(bit, is_group) mainly because I can't think of another boolean value we need to keep right now
 //Do we need double linkage? Or can we use another boolean to indicate root level? Or should we have a special row at position 0 that is itself 'root' just to hold children and order-of?
     //Double linkage offers some extra peace of mind for lost items, but whole-table traversal for M&S garbage collection wouldn't be difficult...
@@ -66,16 +67,16 @@ echo "Hello " . $_SESSION["login"]["username"] . "! You have logged in successfu
     //yes, no, VarChar 512
 //Table structure changing to int(id), varchar512(children), bit(is_group)
 
-class ListTree_Node {
+class TaskTree_Node {
     public int $id;
     public bool $is_group = false;
     public array $children;
     public array $row;
 
-    function __construct($row){
+    function __construct($row, $override_populate = false){
         $this->id = $row["id"];
         $this->row = $row;
-        if ($row["is_group"]){
+        if ($row["is_group"] || $override_populate){
             $this->is_group = true;
             $this->populate_children();
         }
@@ -90,23 +91,51 @@ class ListTree_Node {
             //no sql connection
         }
 
+        //!optimize me with stringbuilder, limit 50 to each call, lists must all be loaded, tasks can be loaded as 'pages'
+/*$built_string = "";
+$children = explode_children();
+for ($i = 0; $i < count($children); $i++){
+    $id = $children[$i];
+    $built_string .= "`id`='$id'";
+    if (isset($children[$i+1])) $built_string .= " OR ";
+}*/
+        //!Don't like this process bc on SQL side I imagine *all* rows will be compared against however many id=XX checks we put in the query, resulting in nm tests where n is table size and m is query comparison count
+        //!Strong argument here for parent references on each row, because then I could just query with LIMIT 50 OFFSET (50*(pg - 1))
+        //Trouble with that is then our want for multiple-parentage, because an easy lookup (WHERE parent=XX) would prevent that, but I'm not sure that a LIKE statement would be lightweight enough?
+        //All this thinkelage is just because these single SELECT queries are also pretty cumbersome depending on how many children a row has. (children is Varchar512 ~= 100 children of ids (len=4))
+        //100 queries in a fraction of a second doesn't *sound* good, but operation cost should actually be low thanks to indexing?
+        //Could use an IN() statement to reduce comparisons per row from nm (ln102) to just n (WHERE id IN (XX, XY, XZ, YX, YY...)) instead of (WHERE id=XX OR id=XY OR...)
+        //Also, somewhere in the to-refactor codebase I remember using a function that encoded and decoded arrays much more reliably than this explode might be. Want to look that up, but not sure how searchable the encoded string would be.
         foreach ($child_id_set as $id){
             $query_children = $sql->query("SELECT * FROM `tasks_%0` WHERE `id`='%1'", [$_SESSION["login"]["id"], $id]);
             if (!$query_children->success){
                 //query failed
             }
             foreach($query_children as $row){
-                $this->children[] = new ListTree_Node($row);
+                $this->children[] = new TaskTree_Node($row);
             }
         }
     }
     
     public function first(){
-        $position = $this->children[0];
-        while ($position->is_group){
-            $position = $position->children[0];
+        foreach ($this->children as $child){
+            if (!$child->is_group) return $child->row;
+            if ($child->is_group && count($child->children) == 0) continue;
+            $result = $child->first();
+            if ($result) return $result;
         }
-        return $position->id;
+        return false;
+    }
+
+    public function find($id){
+        if ($this->id == $id) return $this->row;
+        if ($this->is_group){
+            foreach ($this->children as $child){
+                $result = $child->find($id);
+                if ($result) return $result;
+            }
+        }
+        return false;
     }
 }
 
@@ -115,16 +144,31 @@ if (!$sql){
     //no sql connection
 }
 
-$query_root = $sql->query("SELECT * FROM `tasks_%0` WHERE `id`='0'", [$SESSION["login"]["id"]]);
+//Check that table exists, if not then make.
+/** SHOW TABLES; */
+//Remember to populate with special id0 <root>
+//Populate with list "Tasks", ungrouped, no entries.
+//Look for SQL option to fill gaps in id col instead of incrementing upward to inf.
+/** Can use following query to obtain table of one column (NewIDToInsert) and one row where resulting field is ID for insert.
+ *  Table no longer needs auto-increment if all insertions done with this ID generator.
+ *  Just replace TableName with name of table. ((Thanks StackOverflow))
+ * 
+ * SELECT (Min(ID) + 1) AS NewIDToInsert FROM TableName T2A WHERE NOT EXISTS (SELECT ID FROM TableName T2B WHERE T2A.ID + 1 = T2B.ID)
+*/
+
+$query_root = $sql->query("SELECT * FROM `tasks_%0` WHERE `id`='0'", [$_SESSION["login"]["id"]]);
 if (!$query_root->success){
     //query failed
 }
 
-$SIDEBAR = new ListTree_Node($query_root[0]);
+$SIDEBAR = new TaskTree_Node($query_root[0]);
 
-$this_page = $_GET["pg"] ?: $SIDEBAR->first() ?: null;
-if ($this_page == null){
+if (!empty($_GET["pg"])) $task_list = $SIDEBAR->find($_GET["pg"]) ?: $SIDEBAR->first();
+else $task_list = $SIDEBAR->first();
+if ($task_list == false){
     //error, no page requested, no lists?
 }
+
+$TASKS = new TaskTree_Node($task_list, true);
 
 include __DIR__ . "/templates/index.php";
