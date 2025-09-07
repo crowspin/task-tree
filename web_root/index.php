@@ -175,4 +175,7 @@ if ($task_list == false){
 
 $TASKS = new TaskTree_Node($task_list, true);
 
+//Might have to do another rewrite, learning about many:many relations today
+//Need to learn about JOIN statements before I proceed.
+
 include __DIR__ . "/templates/index.php";
