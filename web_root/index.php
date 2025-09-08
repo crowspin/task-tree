@@ -11,61 +11,24 @@ if (empty($_SESSION["login"]["username"])) crow\Header\redirect("/login.php");
 echo "Hello " . $_SESSION["login"]["username"] . "! You have logged in successfully.";
 
 /**
- * So we've logged in now
- * We have the username
- * SQL table for to-do items will probably be named by username
- * CREATE TABLE $username (uint id, children, parents, varchar256 text, bitflags, created, modified, completed)
- * children/parents will be text lines built from ids braced and interspersed with asterisks (ie. *2*4*43*51*)
- * This way we can just split on asterisk to get an array, and we can also search with a "parents CONTAINS *id_to_search*"
- * Though double-linkage pretty much removes the need for searching like that.. 
- * We also can fetch entries without parents by fetching indicies that have only an asterisk in the parents column
- * Those root rows would be treated as views. 
- * Ah, but we wanted to have categories on every level right? So the sidebar (which lists all the lists) must have a grouping tool as well,
- * meaning that the real root nodes will be list categories, and their children would be lists (pages), and their children would be task 
- * groups, then tasks, then sub-task groups, then sub-tasks.
- * But then every sub task is treated like a task, and so on...
+ * Current expected table structure: int(id), bit(is_group), varchar1024(children)
+ * New MVP: fetch and display existing tasks, mark tasks completed, add new tasks. When we have that, we're calling it and getting back to lessons.
  * 
- * Bitflags will include completion, urgent, ---category?---, readonly
- * Custom ranking can be implied through children column, automatic might be creation date, etc.
- * Whether or not a row is a category could be deduced from whether or not the object's depth in the tree is even (depth 0 (root) = category, group of lists, depth 1 = list, depth 2 = group of tasks)
- * Then, if we go from a list to a task directly, we could just have an 'ungrouped' default item added to each even-depth item automatically which would not be displayed in app.
- * Even-depth rows can still be 'completed' or 'urgent'
- * readonly prevents pruning as well as user modification, allows deletion with extra verification check
- * 
- * Categories can be collapsed, sorted (inner and outer)
- * My Day view must exist, should be able to show odd-depth tasks with their groupings in different places (so if you have to do something out of that group in the middle, the group is displayed twice)
+ * For Later: ----------------------------------------------------------------------------------------------------
+ * Remember that every list is a task. And every task is a list (of sub-tasks).
+ * Other possible-to-implement booleans for tasks_ table structure would be completion, urgent, readonly.
+ * Manual order of children maintained by "children" column, automatic ordering also available by shouldn't affect.
+ * Groups should at some point (when we do real JS and XHRs) be collapsible.
+ * Need a "My Day" view, should track individual tasks and show them with parentage, but allow for those parents and groupings to be in multiple places around the list.
  * My Day should have alternate ordering, suggest new tasks, collects tasks due same day, retains incomplete tasks from previous day
- * Basically Day displays categories, parentage, even-depths as decoration, and is actually ordered exclusively based on odd-depth rows.
- * 
+ * Basically Day displays categories, parentage, groups as decoration.
  * Consider posibility of sharing tasks/lists among groups
  * (kind of need a register form for that though haha)
- * Another problem is long-text notes per task, that's a separate table. Can't just have username as table name if each user has two+ tables.
+ * Another problem is long-text notes per task
  * Add to my day button, move up/down button, due dates/times multiple each, repeat functionality
  * Automatic pruning
- * 
- * I'm going to be passing on any and all Javascript operations here, I don't want to deal with that at this junction. Not using XHRs is going to make the page 
- * feel pretty darn clunky, but I want a functioning prototype, not a finished product.
- * 
  * Feel like closeSession should refresh the page if no destination is supplied instead of redirecting to /login or webroot without any choice to stay put.
  */
-//
-
-/**
- * Operation plan: first we're just going to set up the database with tables for my user, then we'll do a 'pretty print' of listed tasks as a tree
- * We'll likely need to create a method to add tasks to the tree between those two operations.
- * And for the sake of making the whole thing a little lighter on my brain, we'll stop there.
- */
-
-//Table now needs id, parent, children, bitflags
-    //Unhappy with bitflags column, apparently I'm a psycho for wanting to do that because it's 'hard to read'
-    //Change bitflags to column(bit, is_group) mainly because I can't think of another boolean value we need to keep right now
-//Do we need double linkage? Or can we use another boolean to indicate root level? Or should we have a special row at position 0 that is itself 'root' just to hold children and order-of?
-    //Double linkage offers some extra peace of mind for lost items, but whole-table traversal for M&S garbage collection wouldn't be difficult...
-    //I don't think I really need doublelinkage, and boolean won't help with root order, so special row it is.
-    //Make sure special row has id 0 and is_group 1
-//Do we need to use the asterisks, or could we just do commas? What should the column type be?
-    //yes, no, VarChar 512
-//Table structure changing to int(id), varchar512(children), bit(is_group)
 
 class TaskTree_Node {
     public int $id;
@@ -83,7 +46,7 @@ class TaskTree_Node {
     }
 
     private function populate_children(){
-        $child_id_set = explode("*", substr($this->row["children"], 1, -1));
+        $child_id_set = json_decode($this->row["children"]);
         if (empty($child_id_set)) return;
 
         $sql = crow\IO\SQLFactory::get();
@@ -91,34 +54,12 @@ class TaskTree_Node {
             //no sql connection
         }
 
-        //!optimize me with stringbuilder, limit 50 to each call, lists must all be loaded, tasks can be loaded as 'pages'
-/*$built_string = "";
-$children = explode_children();
-for ($i = 0; $i < count($children); $i++){
-    $id = $children[$i];
-    $built_string .= "`id`='$id'";
-    if (isset($children[$i+1])) $built_string .= " OR ";
-}*/
-        //!Don't like this process bc on SQL side I imagine *all* rows will be compared against however many id=XX checks we put in the query, resulting in nm tests where n is table size and m is query comparison count
-        //!Strong argument here for parent references on each row, because then I could just query with LIMIT 50 OFFSET (50*(pg - 1))
-        //Trouble with that is then our want for multiple-parentage, because an easy lookup (WHERE parent=XX) would prevent that, but I'm not sure that a LIKE statement would be lightweight enough?
-        //All this thinkelage is just because these single SELECT queries are also pretty cumbersome depending on how many children a row has. (children is Varchar512 ~= 100 children of ids (len=4))
-        //100 queries in a fraction of a second doesn't *sound* good, but operation cost should actually be low thanks to indexing?
-        //Could use an IN() statement to reduce comparisons per row from nm (ln102) to just n (WHERE id IN (XX, XY, XZ, YX, YY...)) instead of (WHERE id=XX OR id=XY OR...)
-        //Also, somewhere in the to-refactor codebase I remember using a function that encoded and decoded arrays much more reliably than this explode might be. Want to look that up, but not sure how searchable the encoded string would be.
-        //Options as of now for me to decide between then are (parent column + WHERE parents LIKE(row_id_blob)), (WHERE id IN(list_of_child_ids)), (pull whole table into php memory and skip database query problems giving up database optimized lookups..)
-        //parent column option could retain order from child column by sorting on column id using child column as reference, shouldn't be heavy operation, but want to avoid sort operations
-        //IN() option won't return items in order of child column anyway, sort would be neccesary either way.
-        //Feel like setting up a test environment to compare operation times, feel like the better option is obvious and I'm just a dope.
-        foreach ($child_id_set as $id){
-            $query_children = $sql->query("SELECT * FROM `tasks_%0` WHERE `id`='%1'", [$_SESSION["login"]["id"], $id]);
-            if (!$query_children->success){
-                //query failed
-            }
-            foreach($query_children as $row){
-                $this->children[] = new TaskTree_Node($row);
-            }
+        $query_children = $sql->query("SELECT tasks_%0.* FROM tasks_%0 JOIN relations_%0 ON tasks_%0.id = relations_%0.child AND relations_%0.parent = %1", [$_SESSION["login"]["id"], $this->id]);
+        if(!$query_children->success){
+            //query failed
         }
+        $query_children->map_to_column("id");
+        foreach ($child_id_set as $id) $this->children[] = new TaskTree_Node($query_children[$id]);
     }
     
     public function first(){
@@ -147,18 +88,26 @@ $sql = crow\IO\SQLFactory::get();
 if (!$sql){
     //no sql connection
 }
-
-//Check that table exists, if not then make.
-/** SHOW TABLES; */
-//Remember to populate with special id0 <root>
-//Populate with list "Tasks", ungrouped, no entries.
-//Look for SQL option to fill gaps in id col instead of incrementing upward to inf.
-/** Can use following query to obtain table of one column (NewIDToInsert) and one row where resulting field is ID for insert.
- *  Table no longer needs auto-increment if all insertions done with this ID generator.
- *  Just replace TableName with name of table. ((Thanks StackOverflow))
+/** Reference code for many:many related rows, tables
  * 
- * SELECT (Min(ID) + 1) AS NewIDToInsert FROM TableName T2A WHERE NOT EXISTS (SELECT ID FROM TableName T2B WHERE T2A.ID + 1 = T2B.ID)
-*/
+-- create table tasks (id integer, is_group bit, children varchar(1022));
+-- create table relation (parent integer, child integer);
+
+-- insert into tasks (id, is_group) values (0, 1), (1, 0), (2, 0), (3, 1), (4, 1), (5, 1), (6, 0);
+-- insert into relation (parent, child) values (0, 1), (0, 3), (0, 4), (3, 2), (4, 5), (5, 6), (0, 6);
+
+SELECT tasks.* FROM tasks
+-- JOIN relation ON tasks.id = relation.child AND relation.parent = 5 -- Find children of row id 5
+-- JOIN relation ON tasks.id = relation.parent AND relation.child = 0 -- Find parents of row id 0
+ *
+ * Add indexing described here: https://mysql.rjweb.org/doc.php/index_cookbook_mysql#many_to_many_mapping_table
+ * 
+ * We should be checking that the tables exist here (SHOW TABLES;), and if they don't we need to make them.
+ * Must remember to populate tasks_ with special <root> task at id=0, and default "Tasks" list at id=1
+ * 
+ * Future INSERTs can be done by fetching lowest unused id, using following query:
+ *      SELECT (Min(ID) + 1) AS NewIDToInsert FROM TableName T2A WHERE NOT EXISTS (SELECT ID FROM TableName T2B WHERE T2A.ID + 1 = T2B.ID)
+ */
 
 $query_root = $sql->query("SELECT * FROM `tasks_%0` WHERE `id`='0'", [$_SESSION["login"]["id"]]);
 if (!$query_root->success){
@@ -174,58 +123,5 @@ if ($task_list == false){
 }
 
 $TASKS = new TaskTree_Node($task_list, true);
-
-//Might have to do another rewrite, learning about many:many relations today
-//Need to learn about JOIN statements before I proceed.
-
-/**
- * Okay so for a many:many relationship structure, I need another table on hand to track connections.
- * And I can theoretically fetch connected members somewhat quickly that way.
- * If I think about our planned structure from that view, just adding a relations table, then we could poll either columns of that new table
- * for an id, and we should get the ids of all the children, or all the parents from the other column.
- * And then fetching all the rows referred to in that way would be where the JOIN statement comes in, as I would theoretically
- * be selecting a row from the task table, using it's id in a comparator on the relations table and then JOINing to use the result
- * of that operation to fetch the rows on the task table referred to by the relations table.
- * I think.
- * I'm going to pop over to my preferred SQL live test site to test the theory in small-scale.
- * 
- * Study materials:
- *      https://mysql.rjweb.org/doc.php/index_cookbook_mysql#many_to_many_mapping_table
- *      https://stackoverflow.com/questions/17774373/sql-join-many-to-many#17774479
- *      ((DuckDuckGo))
- * 
- * 
- * So this worked really well actually. I'm not confident I'm using JOIN properly, being that I haven't touched the available course on 
- * Boot.Dev yet and didn't really read very deeply into any description about it other than "people usually use it wrong" and that there 
- * are directional modifiers (left, right, inner, outer) that I don't want to spend time understanding at this moment. BUT! Below this is
- * a working relational model that satisfies the "fetch all this row's children" problem. It still however leaves the child ordering issue..
- * 
--- create table tasks (id integer, is_group bit);
--- create table relation (parent integer, child integer);
-
--- insert into tasks (id, is_group) values (0, 1), (1, 0), (2, 0), (3, 1), (4, 1), (5, 1), (6, 0);
--- insert into relation (parent, child) values (0, 1), (0, 3), (0, 4), (3, 2), (4, 5), (5, 6), (0, 6);
-
---  Should look like:
---  	0 - 1
---        \ 3 - 2
---        \ 4 - 5 - \
---        \ -   -   6
---  (I'm bad at ASCII art. haha)
-
-SELECT tasks.* FROM tasks
--- JOIN relation ON tasks.id = relation.child AND relation.parent = 0 -- Find children of row id 5
--- JOIN relation ON tasks.id = relation.parent AND relation.child = 0 -- Find parents of row id 0
-
- * Re: The ordering issue: I could use the variable encode/decode I want to look up to still hold a list of child ids in order. Then
- * I could preallocate an array of that length, iterate through the query returned rows, and store them in the preallocated array
- * at their intended locations for hopefully O(n). Or actually I think it would be O(n) if I iterated through the childID collection
- * and referenced the query rows. If I keyed the query row SQLData object to their IDs. That would be 2n, so still n. Better than n^2.
- * 
- * Oh and, because I'm going to go make dinner and I'm not sure if I'll actually get to build any of this before Tuesday: I do know
- * that optimization at this stage is ludicrous. I should be making something that works. But I do want to actually use this once it's
- * done, and I'm working from the perspective of "How would my little RasPi be able to handle loading my current multi-year Microsoft
- * ToDo account with it's backlog of (4000?) completed tasks?" and "How could it ever handle doing that for a hundred, or a thousand mes?"
- */
 
 include __DIR__ . "/templates/index.php";
