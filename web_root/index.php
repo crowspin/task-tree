@@ -193,6 +193,39 @@ $TASKS = new TaskTree_Node($task_list, true);
  *      https://mysql.rjweb.org/doc.php/index_cookbook_mysql#many_to_many_mapping_table
  *      https://stackoverflow.com/questions/17774373/sql-join-many-to-many#17774479
  *      ((DuckDuckGo))
+ * 
+ * 
+ * So this worked really well actually. I'm not confident I'm using JOIN properly, being that I haven't touched the available course on 
+ * Boot.Dev yet and didn't really read very deeply into any description about it other than "people usually use it wrong" and that there 
+ * are directional modifiers (left, right, inner, outer) that I don't want to spend time understanding at this moment. BUT! Below this is
+ * a working relational model that satisfies the "fetch all this row's children" problem. It still however leaves the child ordering issue..
+ * 
+-- create table tasks (id integer, is_group bit);
+-- create table relation (parent integer, child integer);
+
+-- insert into tasks (id, is_group) values (0, 1), (1, 0), (2, 0), (3, 1), (4, 1), (5, 1), (6, 0);
+-- insert into relation (parent, child) values (0, 1), (0, 3), (0, 4), (3, 2), (4, 5), (5, 6), (0, 6);
+
+--  Should look like:
+--  	0 - 1
+--        \ 3 - 2
+--        \ 4 - 5 - \
+--        \ -   -   6
+--  (I'm bad at ASCII art. haha)
+
+SELECT tasks.* FROM tasks
+-- JOIN relation ON tasks.id = relation.child AND relation.parent = 0 -- Find children of row id 5
+-- JOIN relation ON tasks.id = relation.parent AND relation.child = 0 -- Find parents of row id 0
+
+ * Re: The ordering issue: I could use the variable encode/decode I want to look up to still hold a list of child ids in order. Then
+ * I could preallocate an array of that length, iterate through the query returned rows, and store them in the preallocated array
+ * at their intended locations for hopefully O(n). Or actually I think it would be O(n) if I iterated through the childID collection
+ * and referenced the query rows. If I keyed the query row SQLData object to their IDs. That would be 2n, so still n. Better than n^2.
+ * 
+ * Oh and, because I'm going to go make dinner and I'm not sure if I'll actually get to build any of this before Tuesday: I do know
+ * that optimization at this stage is ludicrous. I should be making something that works. But I do want to actually use this once it's
+ * done, and I'm working from the perspective of "How would my little RasPi be able to handle loading my current multi-year Microsoft
+ * ToDo account with it's backlog of (4000?) completed tasks?" and "How could it ever handle doing that for a hundred, or a thousand mes?"
  */
 
 include __DIR__ . "/templates/index.php";
