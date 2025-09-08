@@ -178,4 +178,21 @@ $TASKS = new TaskTree_Node($task_list, true);
 //Might have to do another rewrite, learning about many:many relations today
 //Need to learn about JOIN statements before I proceed.
 
+/**
+ * Okay so for a many:many relationship structure, I need another table on hand to track connections.
+ * And I can theoretically fetch connected members somewhat quickly that way.
+ * If I think about our planned structure from that view, just adding a relations table, then we could poll either columns of that new table
+ * for an id, and we should get the ids of all the children, or all the parents from the other column.
+ * And then fetching all the rows referred to in that way would be where the JOIN statement comes in, as I would theoretically
+ * be selecting a row from the task table, using it's id in a comparator on the relations table and then JOINing to use the result
+ * of that operation to fetch the rows on the task table referred to by the relations table.
+ * I think.
+ * I'm going to pop over to my preferred SQL live test site to test the theory in small-scale.
+ * 
+ * Study materials:
+ *      https://mysql.rjweb.org/doc.php/index_cookbook_mysql#many_to_many_mapping_table
+ *      https://stackoverflow.com/questions/17774373/sql-join-many-to-many#17774479
+ *      ((DuckDuckGo))
+ */
+
 include __DIR__ . "/templates/index.php";
