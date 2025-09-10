@@ -11,15 +11,17 @@
                 <options>xer01ne (<a href="logout.php">Logout</a>)</options>
             </div>
             <div class='sidebar'>
-                <li>
+                <? echo $HTML_Sidebar ?>
+                <!--<li>
                     <img>TestObj
                 </li>
                 <li>
                     <img>TestObj2
-                </li>
+                </li>-->
             </div>
             <div class='main'>
-                <li>
+                <? echo $HTML_Tasklist ?>
+                <!--<li>
                     <input type=checkbox onclick="location.href='neener.php'" id="li0"/>
                     <label for="li0">asdf</label>
                 </li>
@@ -34,7 +36,7 @@
                 <li>
                     <input type=checkbox id="li3"/>
                     <label for="li3">kuerryu</label>
-                </li>
+                </li>-->
             </div>
         </div>
     </body>

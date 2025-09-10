@@ -83,6 +83,42 @@ class TaskTreeNode {
         return false;
     }
 
+    public function generate_html_sidebar(): string {
+        $rv = "";
+        if ($this->id != "0"){
+            if ($this->row["is_group"]){
+                $rv .= "<group><li>" . $this->row["text"] . "</li>";
+            }
+            else $rv .= "<li>" . $this->row["text"] . "</li>";
+        }
+        foreach ($this->children as &$child){
+            $rv .= $child->generate_html_sidebar();
+        }
+        if ($this->id != "0" && $this->row["is_group"]) $rv .= "</group>";
+        return $rv;
+    }
+
+    public function generate_html_tasklist($root_node_id): string {
+        $rv = "";
+        if ($this->id == $root_node_id){
+            $rv .= "<h3>" . $this->row["text"] . "</h3>";
+            foreach ($this->children as &$child){
+                $rv .= $child->generate_html_tasklist($root_node_id);
+            }
+        } else {
+            if ($this->row["is_group"]){
+                $rv .= "<group><h6>" . $this->row["text"] . "</h6>";
+                foreach ($this->children as &$child){
+                    $rv .= $child->generate_html_tasklist($root_node_id);
+                }
+                $rv .= "</group>";
+            } else {
+                $rv .= "<li>" . $this->row["text"] . "</li>";
+            }
+        }
+        return $rv;
+    }
+
     private static function decode_child_order($children_json): array {
         $child_id_array = json_decode($children_json);
         $return_array = [];
@@ -143,4 +179,20 @@ foreach ($query_tasks as $row){
     $TASKS[$row["parent"]]->children[$TASKS[$row["parent"]]->child_order[$row["id"]]] = &$TASKS[$row["id"]];
 }
 
+$HTML_Sidebar = $LISTS["0"]->generate_html_sidebar();
+$HTML_Tasklist = $TASKS[$CURRENT_LIST]->generate_html_tasklist($CURRENT_LIST);
+
 include __DIR__ . "/templates/index.php";
+
+/**
+ * Full disclosure: I've had very little sleep last night. I'm not sure why, but over the last couple of months it's become
+ *      increasingly common for me to awake at 4am and be unable to fall back asleep. Not sure why 4am specifically, if it's
+ *      related to something happening in the house or if it's just "about 6 hours of sleep." Either way, I'm a bit underslept
+ *      (probably) and I've just finished a pretty stiff drink. I'm going to keep working on the CSS, making this look decent,
+ *      but I'm going to hit a wall, and soon. I'm sure this doesn't look great to some future employer, but I gotta enjoy my
+ *      only "day off" this week somehow.
+ * As things are this moment: We aren't making any tables, and don't have the ability to modify them in any way, but we are
+ *      able to generate HTML to display them in what I think is an efficient manner. There's more work to be done yet on the
+ *      HTML side as well, but mostly I'm worrying about the CSS for display of the two collections of lists.
+ * ((oh boy i feel that drink already))
+ */
