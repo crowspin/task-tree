@@ -8,59 +8,38 @@ if (!crow\Session\open()) die();
 if (empty($_SESSION["login"]["username"])) crow\Header\redirect("/login.php");
 //! I *know* there's an Apache security thing I could be doing instead, but I've never taken the time to learn that, so for the sake of getting this done sooner-than-never...
 
-//echo "Hello " . $_SESSION["login"]["username"] . "! You have logged in successfully.";
+/**
+ * I can't see if I've mentioned it anywhere else here but we should also be caching the list list in SESSION and just maintaining
+ *      both the local copy and the remote copy together. Changes are expected to be very limited compared to pageloads.
+ * Actually, I'm going to leverage ?pg=0 as an "edit lists" page, so id=0's text should be more like "Editing Lists...", something attractive.
+ * Change ids to smaller int-type in db; "make them as small as is safe", unsigned.
+ * Add position column to relation table to replace children column in tasks table? We thought about doing this before, but I think I was 
+ *      going about it wrong then. If we store a position (array index) alongside each pair, we could observe that as `child` is 
+ *      `position`'th child of `parent.` And it would be specific to the relation, working for many:many.
+ * Drop "label" tags; want to have task name onclick like group names have. Also, when on a task's page, show checkbox beside page's name.
+ * Project will be considered submittable once we can toggle completion, add/remove tasks, edit tasks. Shift position of tasks. Completed
+ *      tasks should be separately grouped. Need register form.
+ */
 
 /**
- * Current expected table structure: int(id), bit(is_group), varchar1024(children)
- * New MVP: fetch and display existing tasks, mark tasks completed, add new tasks. When we have that, we're calling it and getting back to lessons.
- * 
- * For Later: ----------------------------------------------------------------------------------------------------
+ * For Future Versions:
+ * ----------------------------------------------------------------------------------------------------
  * Remember that every list is a task. And every task is a list (of sub-tasks).
- * Other possible-to-implement booleans for tasks_ table structure would be completion, urgent, readonly.
- * Manual order of children maintained by "children" column, automatic ordering also available by shouldn't affect.
+ * Other possible-to-implement booleans for tasks_ table structure would be urgent, prunable.
+ * Manual order of children maintained by "relation" column, automatic ordering also available but shouldn't affect.
  * Groups should at some point (when we do real JS and XHRs) be collapsible.
  * Need a "My Day" view, should track individual tasks and show them with parentage, but allow for those parents and groupings to be in multiple places around the list.
  * My Day should have alternate ordering, suggest new tasks, collects tasks due same day, retains incomplete tasks from previous day
  * Basically Day displays categories, parentage, groups as decoration.
  * Consider posibility of sharing tasks/lists among groups
- * (kind of need a register form for that though haha)
- * Another problem is long-text notes per task
- * Add to my day button, move up/down button, due dates/times multiple each, repeat functionality
+ * Another problem is long-text notes per task (not much of a problem though)
+ * Add to my day button, due dates/times multiple each, repeat functionality
  * Automatic pruning
  * Feel like closeSession should refresh the page if no destination is supplied instead of redirecting to /login or webroot without any choice to stay put.
- */
-/** Reference code for many:many related rows, tables
- * 
--- create table tasks (id integer, is_group bit, children varchar(1022));
--- create table relation (parent integer, child integer);
-
--- insert into tasks (id, is_group) values (0, 1), (1, 0), (2, 0), (3, 1), (4, 1), (5, 1), (6, 0);
--- insert into relation (parent, child) values (0, 1), (0, 3), (0, 4), (3, 2), (4, 5), (5, 6), (0, 6);
-
-SELECT tasks.* FROM tasks
--- JOIN relation ON tasks.id = relation.child AND relation.parent = 5 -- Find children of row id 5
--- JOIN relation ON tasks.id = relation.parent AND relation.child = 0 -- Find parents of row id 0
- *
- * Add indexing described here: https://mysql.rjweb.org/doc.php/index_cookbook_mysql#many_to_many_mapping_table
- * 
- * We should be checking that the tables exist here (SHOW TABLES;), and if they don't we need to make them.
- * Must remember to populate tasks_ with special <root> task at id=0, and default "Tasks" list at id=1
- * 
- * Future INSERTs can be done by fetching lowest unused id, using following query:
- *      SELECT (Min(ID) + 1) AS NewIDToInsert FROM TableName T2A WHERE NOT EXISTS (SELECT ID FROM TableName T2B WHERE T2A.ID + 1 = T2B.ID)
- */
-/**
- * I think I want a version that pulls parents instead of children.
- * I can't see if I've mentioned it anywhere else here but we should also be caching the list list in SESSION and just maintaining
- *      both the local copy and the remote copy together. Changes are expected to be very limited compared to pageloads.
- * We'll probably need to leverage autocommit off and transactions for mass changes later on...
- */
-/**
- * Late start today; I've scrubbed the entire house. Cleared all the cobwebs, cleaned the oven as best as I can do for now.
- * Anyway, glad as I am for all that, let's get cracking on another rewrite.
- *
- * Make sure that magic id=0 has text &lt;root&gt; instead of <root>, as the latter will be interpreted as html <3
- */
+ * Deletion cascades.
+ * Could have "My Day" by adding int-like column to tasks_ that stores item's position (array index).
+ * PWA + 2FA
+*/
 
 class TaskTreeNode {
     public int $id;
@@ -88,13 +67,9 @@ class TaskTreeNode {
     public function generate_html_sidebar($current_list): string {
         $rv = "";
         if ($this->id != "0"){
-            if ($this->row["is_group"]){
-                $rv .= "<li><img>" . $this->row["text"] . "</li><group>";
-            }
-            else {
-                if ($this->id == $current_list) $rv .= "<li class='active'><img><a href='?pg=" . $this->id . "'>" . $this->row["text"] . "</a></li>";
-                else $rv .= "<li><img><a href='?pg=" . $this->id . "'>" . $this->row["text"] . "</a></li>";
-            }
+            if ($this->id == $current_list) $rv .= "<li class='active'><img><a href='?pg=" . $this->id . "'>" . $this->row["text"] . "</a></li>";
+            else $rv .= "<li><img><a href='?pg=" . $this->id . "'>" . $this->row["text"] . "</a></li>";
+            if ($this->row["is_group"]) $rv .= "<group>";
         }
         for ($i = 0; $i < count($this->children); $i++){
             $rv .= $this->children[$i]->generate_html_sidebar($current_list);
@@ -104,15 +79,20 @@ class TaskTreeNode {
     }
 
     public function generate_html_tasklist($root_node_id): string {
+        //! Show parentage somehow, reverse navigation
+        //! Maybe when we cache the sidebar structure we'll create a navigation tree in session, and when we load a new page we'll either find 
+        //!     the page id as a child of the last page we were on and show a link to go back, or we won't and we'll just highlight the sidebar.
         $rv = "";
         if ($this->id == $root_node_id){
-            $rv .= "<div><h1>" . $this->row["text"] . "</h1><a href=uhoh.php>...</a></div>";
+            $rv .= "<div><h1>" . $this->row["text"] . "</h1>";
+            if ($root_node_id != "0") $rv .= "<a href=uhoh.php>...</a>";
+            $rv .= "</div>";
             for ($i = 0; $i < count($this->children); $i++){
                 $rv .= $this->children[$i]->generate_html_tasklist($root_node_id);
             }
         } else {
             if ($this->row["is_group"]){
-                $rv .= "<group><div><h3>" . $this->row["text"] . "</h3><a href=uhoh.php>...</a></div>";
+                $rv .= "<group><div><h3 onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</h3><a href=uhoh.php>...</a></div>";
                 for ($i = 0; $i < count($this->children); $i++){
                     $rv .= $this->children[$i]->generate_html_tasklist($root_node_id);
                 }
@@ -138,7 +118,11 @@ $sql = crow\IO\SQLFactory::get();
 if (!$sql){
     //no sql connection
 }
-
+/**
+ * We should be checking that the tables exist here (SHOW TABLES;), and if they don't we need to make them.
+ * Must remember to populate tasks_ with special <root> task at id=0, and default "Tasks" list at id=1
+ * Use structure available through phpma portal.
+ */ 
 $q_rid = 0;
 $qs = "WITH RECURSIVE cte AS (
 	SELECT	a.*, b.parent
@@ -170,8 +154,6 @@ $first_list = $LISTS[$q_rid]->first();
 if (!$first_list){
     //error, no lists?
 }
-//! Need logic to invalidate $_GET["pg"] where the page requested is_group.
-//! Or maybe not? If a user wants to see that it's not harmful?? We could just not link it and leave the sneaky people alone.
 $CURRENT_LIST = (isset($_GET["pg"]) && $_GET["pg"] != "" && isset($LISTS[$_GET["pg"]])) ? $_GET["pg"] : $first_list;
 
 $query_tasks = $sql->query($qs, [$_SESSION["login"]["id"], $CURRENT_LIST]);
@@ -190,17 +172,3 @@ $HTML_Sidebar = $LISTS["0"]->generate_html_sidebar($CURRENT_LIST);
 $HTML_Tasklist = $TASKS[$CURRENT_LIST]->generate_html_tasklist($CURRENT_LIST);
 
 include __DIR__ . "/templates/index.php";
-
-/**
- * Full disclosure: I've had very little sleep last night. I'm not sure why, but over the last couple of months it's become
- *      increasingly common for me to awake at 4am and be unable to fall back asleep. Not sure why 4am specifically, if it's
- *      related to something happening in the house or if it's just "about 6 hours of sleep." Either way, I'm a bit underslept
- *      (probably) and I've just finished a pretty stiff drink. I'm going to keep working on the CSS, making this look decent,
- *      but I'm going to hit a wall, and soon. I'm sure this doesn't look great to some future employer, but I gotta enjoy my
- *      only "day off" this week somehow.
- * As things are this moment: We aren't making any tables, and don't have the ability to modify them in any way, but we are
- *      able to generate HTML to display them in what I think is an efficient manner. There's more work to be done yet on the
- *      HTML side as well, but mostly I'm worrying about the CSS for display of the two collections of lists.
- * ((oh boy i feel that drink already))
- * I'm not feeling it anymore Mr. Krabs. :c
- */

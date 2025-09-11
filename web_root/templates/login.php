@@ -1,7 +1,8 @@
+<!DOCTYPE html>
 <html>
     <head>
         <title>TaskTree - Login</title> 
-        <link rel="stylesheet" href="login.css">
+        <link rel="stylesheet" href="css/login.css">
     </head>
     <body>
         <block class="center">

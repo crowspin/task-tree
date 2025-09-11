@@ -63,6 +63,7 @@ div.sidebar .active {
 }
 div.sidebar li a {
   color: black;
+  text-decoration: none;
 }
 div.sidebar li a:visited {
   color: black;
@@ -98,6 +99,9 @@ div.main div h1, div.main div h3 {
   text-decoration: underline;
   margin: 0;
   flex-grow: 1;
+}
+div.main div h3 {
+  cursor: pointer;
 }
 div.main group {
   display: flex;
