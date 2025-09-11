@@ -9,8 +9,10 @@ if (empty($_SESSION["login"]["username"])) crow\Header\redirect("/login.php");
 // I *know* there's an Apache security thing I could be doing instead, but I've never taken the time to learn that, so for the sake of getting this done sooner-than-never...
 
 /**
- * Drop "label" tags; want to have task name onclick like group names have. Also, when on a task's page, show checkbox beside page's name.
+ * When on a task's page, show checkbox beside h1.
+ * H1 and H3 tags need link to addChild.
  * Completed tasks should be separately grouped.
+ * Groups with no leaf nodes should be hidden.
  * //!
  */
 
@@ -56,20 +58,20 @@ class TaskTreeNode {
         $rv = "";
         if ($this->id == $root_node_id){
             $rv .= "<div><h1>" . $this->row["text"] . "</h1>";
-            if ($root_node_id != "0") $rv .= "<a href=uhoh.php>...</a>";
+            if ($root_node_id != "0") $rv .= "<a href='modify.php?id=" . $this->id . "&action=edit'>...</a>";
             $rv .= "</div>";
             for ($i = 0; $i < count($this->children); $i++){
                 $rv .= $this->children[$i]->generate_html_tasklist($root_node_id);
             }
         } else {
             if ($this->row["is_group"]){
-                $rv .= "<group><div><h3 onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</h3><a href=uhoh.php>...</a></div>";
+                $rv .= "<group><div><h3 onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</h3><a href='modify.php?id=" . $this->id . "&action=edit'>...</a></div>";
                 for ($i = 0; $i < count($this->children); $i++){
                     $rv .= $this->children[$i]->generate_html_tasklist($root_node_id);
                 }
                 $rv .= "</group>";
             } else {
-                $rv .= "<li><input type=checkbox id='toggleComplete_" . $this->id . "'/><label for='toggleComplete_" . $this->id . "'>" . $this->row["text"] . "</label><a href=uhoh.php>...</a></li>";
+                $rv .= "<li><input type=checkbox onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete'\"id=\"toggleComplete['" . $this->id . "']\"/><p onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</p><a href='modify.php?id=" . $this->id . "&action=edit'>...</a></li>";
             }
         }
         return $rv;
