@@ -17,6 +17,7 @@ div.container {
   max-width: 1750px;
   width: calc(100vw - 2*(15px));
   flex-grow: 1;
+  overflow: hidden;
 }
 div.head {
   grid-area: head;
@@ -37,18 +38,23 @@ div.sidebar {
   padding: 15px;
   border-radius: 5px;
   white-space: nowrap;
-  max-width: 33vw
+  max-width: 33vw;
+  display: flex;
+  flex-direction: column;
+  overflow: scroll;
 }
 div.sidebar group {
   margin-left: 17px;
   display: block;
   border-left: 1px black solid;
+  flex-shrink: 0;
 }
 div.sidebar li {
   display: block;
   padding: 10px;
   text-overflow: ellipsis;
   overflow: hidden;
+  flex-shrink: 0;
 }
 div.sidebar .active {
   font-weight: bold;
@@ -66,29 +72,52 @@ div.sidebar li img {
   height: 0.9em;
   margin-right: 0.5em;
 }
-
-
-
-
-
-
+div.sidebar option {
+  margin-top: auto;
+  margin-left: auto;
+}
 div.main {
   grid-area: main;
   display: flex;
   flex-direction: column;
+  overflow: scroll;
+  padding-right: 1vw;
 }
-div.main :first-child {
-  margin-top: 0;
-}
-div.main :last-child {
-  margin-bottom: 0;
-}
-div.main > li {
+div.main div {
+  border: 1px solid black;
+  border-radius: 5px;
+  box-shadow: #4448 4px 4px 4px 2px;
+  background-color: #F4F4F4;
   display: flex;
   flex-direction: row;
-  gap: 1vh;
+  align-items: center;
+  padding: 8px 15px;
+  flex-shrink: 0;
+}
+div.main div h1, div.main div h3 {
+  text-decoration: underline;
+  margin: 0;
+  flex-grow: 1;
+}
+div.main group {
+  display: flex;
+  flex-direction: column;
+  margin: 15px 0 0 3vw;
+  flex-shrink: 0;
+}
+div.main group div {
+  box-shadow: #444A 1px 1px 1px 1px;
+}
+div.main li {
+  display: flex;
+  flex-direction: row;
+  gap: 15px;
   background-color: #DDD;
-  padding: 2vh;
-  margin: 1vh 0;
+  padding: 15px;
+  margin: 15px 0 0 3vw;
   border-radius: 4px;
+  flex-shrink: 0;
+}
+div.main li label {
+  flex-grow: 1;
 }

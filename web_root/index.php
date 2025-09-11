@@ -58,6 +58,8 @@ SELECT tasks.* FROM tasks
 /**
  * Late start today; I've scrubbed the entire house. Cleared all the cobwebs, cleaned the oven as best as I can do for now.
  * Anyway, glad as I am for all that, let's get cracking on another rewrite.
+ *
+ * Make sure that magic id=0 has text &lt;root&gt; instead of <root>, as the latter will be interpreted as html <3
  */
 
 class TaskTreeNode {
@@ -94,8 +96,8 @@ class TaskTreeNode {
                 else $rv .= "<li><img><a href='?pg=" . $this->id . "'>" . $this->row["text"] . "</a></li>";
             }
         }
-        foreach ($this->children as &$child){
-            $rv .= $child->generate_html_sidebar($current_list);
+        for ($i = 0; $i < count($this->children); $i++){
+            $rv .= $this->children[$i]->generate_html_sidebar($current_list);
         }
         if ($this->id != "0" && $this->row["is_group"]) $rv .= "</group>";
         return $rv;
@@ -104,19 +106,19 @@ class TaskTreeNode {
     public function generate_html_tasklist($root_node_id): string {
         $rv = "";
         if ($this->id == $root_node_id){
-            $rv .= "<h3>" . $this->row["text"] . "</h3>";
-            foreach ($this->children as &$child){
-                $rv .= $child->generate_html_tasklist($root_node_id);
+            $rv .= "<div><h1>" . $this->row["text"] . "</h1><a href=uhoh.php>...</a></div>";
+            for ($i = 0; $i < count($this->children); $i++){
+                $rv .= $this->children[$i]->generate_html_tasklist($root_node_id);
             }
         } else {
             if ($this->row["is_group"]){
-                $rv .= "<group><h6>" . $this->row["text"] . "</h6>";
-                foreach ($this->children as &$child){
-                    $rv .= $child->generate_html_tasklist($root_node_id);
+                $rv .= "<group><div><h3>" . $this->row["text"] . "</h3><a href=uhoh.php>...</a></div>";
+                for ($i = 0; $i < count($this->children); $i++){
+                    $rv .= $this->children[$i]->generate_html_tasklist($root_node_id);
                 }
                 $rv .= "</group>";
             } else {
-                $rv .= "<li>" . $this->row["text"] . "</li>";
+                $rv .= "<li><input type=checkbox id='toggleComplete_" . $this->id . "'/><label for='toggleComplete_" . $this->id . "'>" . $this->row["text"] . "</label><a href=uhoh.php>...</a></li>";
             }
         }
         return $rv;
@@ -170,7 +172,7 @@ if (!$first_list){
 }
 //! Need logic to invalidate $_GET["pg"] where the page requested is_group.
 //! Or maybe not? If a user wants to see that it's not harmful?? We could just not link it and leave the sneaky people alone.
-$CURRENT_LIST = (!empty($_GET["pg"]) && isset($LISTS[$_GET["pg"]])) ? $_GET["pg"] : $first_list;
+$CURRENT_LIST = (isset($_GET["pg"]) && $_GET["pg"] != "" && isset($LISTS[$_GET["pg"]])) ? $_GET["pg"] : $first_list;
 
 $query_tasks = $sql->query($qs, [$_SESSION["login"]["id"], $CURRENT_LIST]);
 if (!$query_tasks->success){
