@@ -6,34 +6,13 @@ require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/IO/SQLFactory.php";
 
 if (!crow\Session\open()) die();
 if (empty($_SESSION["login"]["username"])) crow\Header\redirect("/login.php");
-//! I *know* there's an Apache security thing I could be doing instead, but I've never taken the time to learn that, so for the sake of getting this done sooner-than-never...
+// I *know* there's an Apache security thing I could be doing instead, but I've never taken the time to learn that, so for the sake of getting this done sooner-than-never...
 
 /**
- * We should also be caching $LISTS in SESSION and just maintaining both the local copy and the remote copy together.
  * Drop "label" tags; want to have task name onclick like group names have. Also, when on a task's page, show checkbox beside page's name.
- * Project will be considered submittable once we can toggle completion, add/remove tasks, edit tasks. Shift position of tasks. Completed
- *      tasks should be separately grouped. Need register form.
+ * Completed tasks should be separately grouped.
+ * //!
  */
-
-/**
- * For Future Versions:
- * ----------------------------------------------------------------------------------------------------
- * Remember that every list is a task. And every task is a list (of sub-tasks).
- * Other possible-to-implement booleans for tasks_ table structure would be urgent, prunable.
- * Manual order of children maintained by "relation" column, automatic ordering also available but shouldn't affect.
- * Groups should at some point (when we do real JS and XHRs) be collapsible.
- * Need a "My Day" view, should track individual tasks and show them with parentage, but allow for those parents and groupings to be in multiple places around the list.
- * My Day should have alternate ordering, suggest new tasks, collects tasks due same day, retains incomplete tasks from previous day
- * Basically Day displays categories, parentage, groups as decoration.
- * Consider posibility of sharing tasks/lists among groups
- * Another problem is long-text notes per task (not much of a problem though)
- * Add to my day button, due dates/times multiple each, repeat functionality
- * Automatic pruning
- * Feel like closeSession should refresh the page if no destination is supplied instead of redirecting to /login or webroot without any choice to stay put.
- * Deletion cascades.
- * Could have "My Day" by adding int-like column to tasks_ that stores item's position (array index).
- * PWA + 2FA
-*/
 
 class TaskTreeNode {
     public int $id;
@@ -71,9 +50,9 @@ class TaskTreeNode {
     }
 
     public function generate_html_tasklist($root_node_id): string {
-        //! Show parentage somehow, reverse navigation
-        //! Maybe when we cache the sidebar structure we'll create a navigation tree in session, and when we load a new page we'll either find 
-        //!     the page id as a child of the last page we were on and show a link to go back, or we won't and we'll just highlight the sidebar.
+        // Show parentage somehow, reverse navigation
+        // Maybe when we cache the sidebar structure we'll create a navigation tree in session, and when we load a new page we'll either find 
+        //     the page id as a child of the last page we were on and show a link to go back, or we won't and we'll just highlight the sidebar.
         $rv = "";
         if ($this->id == $root_node_id){
             $rv .= "<div><h1>" . $this->row["text"] . "</h1>";
@@ -104,7 +83,7 @@ if (!$sql){
 /**
  * We should be checking that the tables exist here (SHOW TABLES;), and if they don't we need to make them.
  * Must remember to populate tasks_ with special "Editing Lists..." task at id=0, and default "Tasks" list at id=1
- * Use structure available through phpma portal.
+ * Use structure available through phpma portal.//!
  */ 
 $q_rid = 0;
 $qs = "WITH RECURSIVE cte AS (
@@ -155,3 +134,24 @@ $HTML_Sidebar = $LISTS["0"]->generate_html_sidebar($CURRENT_LIST);
 $HTML_Tasklist = $TASKS[$CURRENT_LIST]->generate_html_tasklist($CURRENT_LIST);
 
 include __DIR__ . "/templates/index.php";
+
+/**
+ * For Future Versions:
+ * ----------------------------------------------------------------------------------------------------
+ * We should be caching $LISTS in SESSION and just maintaining both the local copy and the remote copy together.
+ * Remember that every list is a task. And every task is a list (of sub-tasks).
+ * Other possible-to-implement booleans for tasks_ table structure would be urgent, prunable.
+ * Manual order of children maintained by "relation" column, automatic ordering also available but shouldn't affect.
+ * Groups should at some point (when we do real JS and XHRs) be collapsible.
+ * Need a "My Day" view, should track individual tasks and show them with parentage, but allow for those parents and groupings to be in multiple places around the list.
+ * My Day should have alternate ordering, suggest new tasks, collects tasks due same day, retains incomplete tasks from previous day
+ * Basically Day displays categories, parentage, groups as decoration.
+ * Consider posibility of sharing tasks/lists among groups
+ * Another problem is long-text notes per task (not much of a problem though)
+ * Add to my day button, due dates/times multiple each, repeat functionality
+ * Automatic pruning
+ * Feel like closeSession should refresh the page if no destination is supplied instead of redirecting to /login or webroot without any choice to stay put.
+ * Deletion cascades.
+ * Could have "My Day" by adding int-like column to tasks_ that stores item's position (array index).
+ * PWA + 2FA
+*/
