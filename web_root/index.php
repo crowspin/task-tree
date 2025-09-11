@@ -9,13 +9,7 @@ if (empty($_SESSION["login"]["username"])) crow\Header\redirect("/login.php");
 //! I *know* there's an Apache security thing I could be doing instead, but I've never taken the time to learn that, so for the sake of getting this done sooner-than-never...
 
 /**
- * I can't see if I've mentioned it anywhere else here but we should also be caching the list list in SESSION and just maintaining
- *      both the local copy and the remote copy together. Changes are expected to be very limited compared to pageloads.
- * Actually, I'm going to leverage ?pg=0 as an "edit lists" page, so id=0's text should be more like "Editing Lists...", something attractive.
- * Change ids to smaller int-type in db; "make them as small as is safe", unsigned.
- * Add position column to relation table to replace children column in tasks table? We thought about doing this before, but I think I was 
- *      going about it wrong then. If we store a position (array index) alongside each pair, we could observe that as `child` is 
- *      `position`'th child of `parent.` And it would be specific to the relation, working for many:many.
+ * We should also be caching $LISTS in SESSION and just maintaining both the local copy and the remote copy together.
  * Drop "label" tags; want to have task name onclick like group names have. Also, when on a task's page, show checkbox beside page's name.
  * Project will be considered submittable once we can toggle completion, add/remove tasks, edit tasks. Shift position of tasks. Completed
  *      tasks should be separately grouped. Need register form.
@@ -44,13 +38,11 @@ if (empty($_SESSION["login"]["username"])) crow\Header\redirect("/login.php");
 class TaskTreeNode {
     public int $id;
     public array $children;
-    public array $child_order;
     public array $row;
 
     function __construct($row){
         $this->id = $row["id"];
         $this->children = [];
-        $this->child_order = TaskTreeNode::decode_child_order($row["children"]);
         $this->row = $row;
     }
 
@@ -103,15 +95,6 @@ class TaskTreeNode {
         }
         return $rv;
     }
-
-    private static function decode_child_order($children_json): array {
-        $child_id_array = json_decode($children_json);
-        $return_array = [];
-        foreach ($child_id_array as $idx=>$val){
-            $return_array[$val] = $idx;
-        }
-        return $return_array;
-    }
 }
 
 $sql = crow\IO\SQLFactory::get();
@@ -120,22 +103,22 @@ if (!$sql){
 }
 /**
  * We should be checking that the tables exist here (SHOW TABLES;), and if they don't we need to make them.
- * Must remember to populate tasks_ with special <root> task at id=0, and default "Tasks" list at id=1
+ * Must remember to populate tasks_ with special "Editing Lists..." task at id=0, and default "Tasks" list at id=1
  * Use structure available through phpma portal.
  */ 
 $q_rid = 0;
 $qs = "WITH RECURSIVE cte AS (
-	SELECT	a.*, b.parent
+	SELECT	a.*, b.parent, b.idx
 	FROM	tasks_%0 AS a
     JOIN    relations_%0 AS b
 	ON      a.id = b.child AND b.parent = %1
 	UNION ALL 
-    SELECT	cld.*, rel.parent
+    SELECT	cld.*, rel.parent, rel.idx
 	FROM	cte prt
     JOIN    relations_%0 rel ON prt.id = rel.parent AND prt.is_group = 1
 	JOIN    tasks_%0 cld ON cld.id = rel.child
 )
-SELECT *, 'root' AS parent FROM tasks_%0 WHERE id = %1 
+SELECT *, 'root' AS parent, null AS idx FROM tasks_%0 WHERE id = %1 
 UNION ALL SELECT * FROM cte r";
 
 $query_root = $sql->query($qs, [$_SESSION["login"]["id"], $q_rid]);
@@ -147,7 +130,7 @@ $LISTS = [];
 foreach ($query_root as $row){
     $LISTS[$row["id"]] = new TaskTreeNode($row);
     if ($row["parent"] == "root") continue;
-    $LISTS[$row["parent"]]->children[$LISTS[$row["parent"]]->child_order[$row["id"]]] = &$LISTS[$row["id"]];
+    $LISTS[$row["parent"]]->children[$row["idx"]] = &$LISTS[$row["id"]];
 }
 
 $first_list = $LISTS[$q_rid]->first();
@@ -165,7 +148,7 @@ $TASKS = [];
 foreach ($query_tasks as $row){
     $TASKS[$row["id"]] = new TaskTreeNode($row);
     if ($row["parent"] == "root") continue;
-    $TASKS[$row["parent"]]->children[$TASKS[$row["parent"]]->child_order[$row["id"]]] = &$TASKS[$row["id"]];
+    $TASKS[$row["parent"]]->children[$row["idx"]] = &$TASKS[$row["id"]];
 }
 
 $HTML_Sidebar = $LISTS["0"]->generate_html_sidebar($CURRENT_LIST);
