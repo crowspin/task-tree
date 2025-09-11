@@ -83,16 +83,19 @@ class TaskTreeNode {
         return false;
     }
 
-    public function generate_html_sidebar(): string {
+    public function generate_html_sidebar($current_list): string {
         $rv = "";
         if ($this->id != "0"){
             if ($this->row["is_group"]){
-                $rv .= "<group><li>" . $this->row["text"] . "</li>";
+                $rv .= "<li><img>" . $this->row["text"] . "</li><group>";
             }
-            else $rv .= "<li>" . $this->row["text"] . "</li>";
+            else {
+                if ($this->id == $current_list) $rv .= "<li class='active'><img><a href='?pg=" . $this->id . "'>" . $this->row["text"] . "</a></li>";
+                else $rv .= "<li><img><a href='?pg=" . $this->id . "'>" . $this->row["text"] . "</a></li>";
+            }
         }
         foreach ($this->children as &$child){
-            $rv .= $child->generate_html_sidebar();
+            $rv .= $child->generate_html_sidebar($current_list);
         }
         if ($this->id != "0" && $this->row["is_group"]) $rv .= "</group>";
         return $rv;
@@ -165,6 +168,8 @@ $first_list = $LISTS[$q_rid]->first();
 if (!$first_list){
     //error, no lists?
 }
+//! Need logic to invalidate $_GET["pg"] where the page requested is_group.
+//! Or maybe not? If a user wants to see that it's not harmful?? We could just not link it and leave the sneaky people alone.
 $CURRENT_LIST = (!empty($_GET["pg"]) && isset($LISTS[$_GET["pg"]])) ? $_GET["pg"] : $first_list;
 
 $query_tasks = $sql->query($qs, [$_SESSION["login"]["id"], $CURRENT_LIST]);
@@ -179,7 +184,7 @@ foreach ($query_tasks as $row){
     $TASKS[$row["parent"]]->children[$TASKS[$row["parent"]]->child_order[$row["id"]]] = &$TASKS[$row["id"]];
 }
 
-$HTML_Sidebar = $LISTS["0"]->generate_html_sidebar();
+$HTML_Sidebar = $LISTS["0"]->generate_html_sidebar($CURRENT_LIST);
 $HTML_Tasklist = $TASKS[$CURRENT_LIST]->generate_html_tasklist($CURRENT_LIST);
 
 include __DIR__ . "/templates/index.php";
@@ -195,4 +200,5 @@ include __DIR__ . "/templates/index.php";
  *      able to generate HTML to display them in what I think is an efficient manner. There's more work to be done yet on the
  *      HTML side as well, but mostly I'm worrying about the CSS for display of the two collections of lists.
  * ((oh boy i feel that drink already))
+ * I'm not feeling it anymore Mr. Krabs. :c
  */

@@ -6,8 +6,10 @@
     <body>
         <div class='container'>
             <div class='head'>
-                TaskTree
-                <small> a prototype </small>
+                <div>
+                    TaskTree
+                    <small> a prototype </small>
+                </div>
                 <options>xer01ne (<a href="logout.php">Logout</a>)</options>
             </div>
             <div class='sidebar'>
