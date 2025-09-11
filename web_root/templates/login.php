@@ -3,6 +3,7 @@
     <head>
         <title>TaskTree - Login</title> 
         <link rel="stylesheet" href="css/login.css">
+        <meta name="viewport" content="width=device-width, initial-scale=0.75">
     </head>
     <body>
         <block class="center">

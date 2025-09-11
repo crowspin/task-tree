@@ -71,10 +71,34 @@ class TaskTreeNode {
                 }
                 $rv .= "</group>";
             } else {
-                $rv .= "<li><input type=checkbox onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete'\"id=\"toggleComplete['" . $this->id . "']\"/><p onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</p><a href='modify.php?id=" . $this->id . "&action=edit'>...</a></li>";
+                $rv .= "<li><input type=checkbox" . (($this->row["complete"])?" checked":"") . " onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete'\"id=\"toggleComplete['" . $this->id . "']\"/><p onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</p><a href='modify.php?id=" . $this->id . "&action=edit'>...</a></li>";
             }
         }
         return $rv;
+    }
+
+    public function separate_completed_items(): array {
+        $INCOMPLETE = [];
+        $COMPLETE = [];
+
+        for ($i = 0; $i < count($this->children); $i++){
+            if ($this->children[$i]->row["is_group"]){
+                [$a, $b] = $this->children[$i]->separate_completed_items();
+                if (count($a) > 0){
+                    $INCOMPLETE[] = $this->children[$i];
+                    $INCOMPLETE = array_merge($INCOMPLETE, $a);
+                }
+                if (count($b) > 0 || count($this->children[$i]->children) == 0){
+                    $COMPLETE[] = $this->children[$i];
+                    $COMPLETE = array_merge($COMPLETE, $b);
+                }
+            } else {
+                if ($this->children[$i]->row["complete"]) $COMPLETE[] = &$this->children[$i];
+                else $INCOMPLETE[] = &$this->children[$i];
+            }
+        }
+
+        return [$INCOMPLETE, $COMPLETE];
     }
 }
 
@@ -136,6 +160,13 @@ $HTML_Sidebar = $LISTS["0"]->generate_html_sidebar($CURRENT_LIST);
 $HTML_Tasklist = $TASKS[$CURRENT_LIST]->generate_html_tasklist($CURRENT_LIST);
 
 include __DIR__ . "/templates/index.php";
+
+[$inc, $com] = $LISTS[0]->separate_completed_items();
+echo "<pre><code>";
+print_r($inc);
+echo "\n\n\n";
+print_r($com);
+echo "</code></pre>";
 
 /**
  * For Future Versions:

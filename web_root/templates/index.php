@@ -3,6 +3,7 @@
     <head>
         <title>TaskTree - Home</title> 
         <link rel="stylesheet" href="css/index.css">
+        <meta name="viewport" content="width=device-width, initial-scale=0.75">
     </head>
     <body>
         <div class='container'>
