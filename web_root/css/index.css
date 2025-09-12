@@ -94,6 +94,7 @@ div.main div {
   align-items: center;
   padding: 8px 15px;
   flex-shrink: 0;
+  gap: 15px;
 }
 div.main > div.midline {
   margin-top: 45px;

@@ -9,13 +9,10 @@ if (empty($_SESSION["login"]["username"])) crow\Header\redirect("/login.php");
 // I *know* there's an Apache security thing I could be doing instead, but I've never taken the time to learn that, so for the sake of getting this done sooner-than-never...
 
 /**
- * When on a task's page, show checkbox beside h1.
- * H1 and H3 tags need link to addChild.
  * First iteration of function to separate completed tasks away from incomplete reveals that the way we're holding tasks in an array and
  *     children are only references is actually also overwriting rows when we process them (There's only one $LISTS[6], but we /had/ two
  *     rows with slightly different data (just parent and idx columns)). This might be a moot issue, but it could be bigger depending on
  *     how work on modify.php proceeds.
- * //!
  */
 
 class TaskTreeNode {
@@ -57,7 +54,11 @@ class TaskTreeNode {
         // Show parentage somehow, reverse navigation
         // Maybe when we cache the sidebar structure we'll create a navigation tree in session, and when we load a new page we'll either find 
         //     the page id as a child of the last page we were on and show a link to go back, or we won't and we'll just highlight the sidebar.
-        $headblock = "<div><h1>" . $this->row["text"] . "</h1>";
+        // Observed opportunity for this while fixing $CURRENT_PAGE logic; could be something to think about rel. "If $_GET["pg"] is not an index of $LISTS"
+        $headblock = "<div>";
+        if (!$this->row["is_group"]) $headblock .= "<input type=checkbox" . (($this->row["complete"])?" checked":"") . " onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'\"id=\"toggleComplete['" . $this->id . "']\"/>";
+        $headblock .= "<h1>" . $this->row["text"] . "</h1>";
+        $headblock .= "<a href='modify.php?id=" . $this->id . "&action=addChild" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>+</a>";
         if ($this->id != "0") $headblock .= "<a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>...</a>";
         $headblock .= "</div>";
 
@@ -87,7 +88,7 @@ class TaskTreeNode {
                 $INC .= $inc;
                 $COM .= $com;
             }
-            $grouphead = "<group><div><h3 onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</h3><a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>...</a></div>";
+            $grouphead = "<group><div><h3 onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</h3><a href='modify.php?id=" . $this->id . "&action=addChild" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>+</a><a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>...</a></div>";
             $groupfoot = "</group>";
             if (strlen($INC) > 0){
                 $INCOMPLETE .= $grouphead . $INC . $groupfoot;
@@ -148,7 +149,7 @@ $first_list = $LISTS[$q_rid]->first();
 if (!$first_list){
     //error, no lists?
 }
-$CURRENT_LIST = (isset($_GET["pg"]) && $_GET["pg"] != "" && isset($LISTS[$_GET["pg"]])) ? $_GET["pg"] : $first_list;
+$CURRENT_LIST = (isset($_GET["pg"]) && $_GET["pg"] != "") ? $_GET["pg"] : $first_list;
 
 $query_tasks = $sql->query($qs, [$_SESSION["login"]["id"], $CURRENT_LIST]);
 if (!$query_tasks->success){
