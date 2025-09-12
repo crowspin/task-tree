@@ -56,6 +56,12 @@ div.sidebar li {
   overflow: hidden;
   flex-shrink: 0;
 }
+div.sidebar > li.header {
+  border-bottom: 1px solid grey
+}
+div.sidebar > li.midline {
+  margin-top: 45px;
+}
 div.sidebar .active {
   font-weight: bold;
   background: #0001;
@@ -83,6 +89,9 @@ div.main {
   flex-direction: column;
   overflow: scroll;
   padding-right: 1vw;
+}
+div.main > a {
+  margin-left: auto;
 }
 div.main div {
   border: 1px solid black;

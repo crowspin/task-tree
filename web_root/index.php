@@ -3,111 +3,12 @@
 require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/Session/open.php";
 require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/Header/redirect.php";
 require_once $_SERVER["DOCUMENT_ROOT"] . "/lib/crowlib-php/IO/SQLFactory.php";
+require_once __DIR__ . "/lib/TaskTreeNode.php";
 
 if (!crow\Session\open()) die();
 if (empty($_SESSION["login"]["username"])) crow\Header\redirect("/login.php");
 // I *know* there's an Apache security thing I could be doing instead, but I've never taken the time to learn that, so for the sake of getting this done sooner-than-never...
 
-/**
- * First iteration of function to separate completed tasks away from incomplete reveals that the way we're holding tasks in an array and
- *     children are only references is actually also overwriting rows when we process them (There's only one $LISTS[6], but we /had/ two
- *     rows with slightly different data (just parent and idx columns)). This might be a moot issue, but it could be bigger depending on
- *     how work on modify.php proceeds.
- */
-
-class TaskTreeNode {
-    public int $id;
-    public array $children;
-    public array $row;
-
-    function __construct($row){
-        $this->id = $row["id"];
-        $this->children = [];
-        $this->row = $row;
-    }
-
-    public function first(){
-        foreach ($this->children as &$child){
-            if (!$child->row["is_group"]) return $child->id;
-            if (count($child->children) == 0) continue;
-            $result = $child->first();
-            if ($result) return $result;
-        }
-        return false;
-    }
-
-    public function generate_html_sidebar($current_list): string {
-        $rv = "";
-        if ($this->id != "0"){
-            if ($this->id == $current_list) $rv .= "<li class='active'><img><a href='?pg=" . $this->id . "'>" . $this->row["text"] . "</a></li>";
-            else $rv .= "<li><img><a href='?pg=" . $this->id . "'>" . $this->row["text"] . "</a></li>";
-            if ($this->row["is_group"]) $rv .= "<group>";
-        }
-        for ($i = 0; $i < count($this->children); $i++){
-            $rv .= $this->children[$i]->generate_html_sidebar($current_list);
-        }
-        if ($this->id != "0" && $this->row["is_group"]) $rv .= "</group>";
-        return $rv;
-    }
-
-    public function generate_html_tasklist(): string {
-        // Show parentage somehow, reverse navigation
-        // Maybe when we cache the sidebar structure we'll create a navigation tree in session, and when we load a new page we'll either find 
-        //     the page id as a child of the last page we were on and show a link to go back, or we won't and we'll just highlight the sidebar.
-        // Observed opportunity for this while fixing $CURRENT_PAGE logic; could be something to think about rel. "If $_GET["pg"] is not an index of $LISTS"
-        $headblock = "<div>";
-        if (!$this->row["is_group"]) $headblock .= "<input type=checkbox" . (($this->row["complete"])?" checked":"") . " onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'\"id=\"toggleComplete['" . $this->id . "']\"/>";
-        $headblock .= "<h1>" . $this->row["text"] . "</h1>";
-        $headblock .= "<a href='modify.php?id=" . $this->id . "&action=addChild" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>+</a>";
-        if ($this->id != "0") $headblock .= "<a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>...</a>";
-        $headblock .= "</div>";
-
-        $divider = "<div class='midline'><h2>Completed</h2></div>";
-
-        $incomplete = "";
-        $complete = "";
-
-        for ($i = 0; $i < count($this->children); $i++){
-            [$inc, $com] = $this->children[$i]->generate_html_tasklist_r();
-            $incomplete .= $inc;
-            $complete .= $com;
-        }
-        
-        if (strlen($complete) > 0) return $headblock . $incomplete . $divider . $complete;
-        else return $headblock . $incomplete;
-    }
-
-    private function generate_html_tasklist_r(): array {
-        $INCOMPLETE = "";
-        $COMPLETE = "";
-        if ($this->row["is_group"]){
-            $INC = "";
-            $COM = "";
-            for ($i = 0; $i < count($this->children); $i++){
-                [$inc, $com] = $this->children[$i]->generate_html_tasklist_r();
-                $INC .= $inc;
-                $COM .= $com;
-            }
-            $grouphead = "<group><div><h3 onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</h3><a href='modify.php?id=" . $this->id . "&action=addChild" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>+</a><a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>...</a></div>";
-            $groupfoot = "</group>";
-            if (strlen($INC) > 0){
-                $INCOMPLETE .= $grouphead . $INC . $groupfoot;
-            }
-            if (strlen($COM) > 0 || count($this->children) == 0){
-                $COMPLETE .= $grouphead . $COM . $groupfoot;
-            }
-        } else {
-            $p1 = "<li><input type=checkbox";
-            $p2 = " onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'\"id=\"toggleComplete['" . $this->id . "']\"/><p onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</p><a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>...</a></li>";
-            if ($this->row["complete"]){
-                $COMPLETE .= $p1 . " checked" . $p2;
-            } else {
-                $INCOMPLETE .= $p1 . $p2;
-            }
-        }
-        return [$INCOMPLETE, $COMPLETE];
-    }
-}
 
 $sql = crow\IO\SQLFactory::get();
 if (!$sql){
@@ -138,6 +39,13 @@ if (!$query_root->success){
     //query failed
 }
 
+/**
+ * First iteration of function to separate completed tasks away from incomplete revealed that the way we're holding tasks in an array and
+ *     children are only references is actually also overwriting rows when we process them (There's only one $LISTS[6], but we /had/ two
+ *     rows with slightly different data (just parent and idx columns)). This might be a moot issue, but it could be bigger depending on
+ *     how work on modify.php proceeds.
+ */
+
 $LISTS = [];
 foreach ($query_root as $row){
     $LISTS[$row["id"]] = new TaskTreeNode($row);
@@ -151,7 +59,7 @@ if (!$first_list){
 }
 $CURRENT_LIST = (isset($_GET["pg"]) && $_GET["pg"] != "") ? $_GET["pg"] : $first_list;
 
-$query_tasks = $sql->query($qs, [$_SESSION["login"]["id"], $CURRENT_LIST]);
+$query_tasks = $sql->query($qs/*Pagination/ . " LIMIT 50 OFFSET " . 0*/, [$_SESSION["login"]["id"], $CURRENT_LIST]);
 if (!$query_tasks->success){
     //query failed
 }
@@ -163,10 +71,28 @@ foreach ($query_tasks as $row){
     $TASKS[$row["parent"]]->children[$row["idx"]] = &$TASKS[$row["id"]];
 }
 
+$callback = function($value){ return $value[0] == $GLOBALS['CURRENT_LIST']; };
+
+//Apparently my server is running on PHP 8.21.1 right now, so I had to implement this myself.
+function array_find_key($array, $callback){
+    for ($i = 0; $i < count($array); $i++){
+        if ($callback($array[$i])) return $i;
+    }
+    return null;
+}
+
+if ($LISTS["0"]->find($CURRENT_LIST)) $_SESSION["reverseNav"] = [];
+else if ($pos = array_find_key($_SESSION["reverseNav"], $callback)){
+    $_SESSION["reverseNav"] = array_slice($_SESSION["reverseNav"], 0, $pos);
+}
+$_SESSION["reverseNav"][] = [$CURRENT_LIST, $TASKS[$CURRENT_LIST]->row["text"]];
+
 $HTML_Sidebar = $LISTS["0"]->generate_html_sidebar($CURRENT_LIST);
 $HTML_Tasklist = $TASKS[$CURRENT_LIST]->generate_html_tasklist();
 
 include __DIR__ . "/templates/index.php";
+
+//var_dump($_SESSION["reverseNav"]);
 
 /**
  * For Future Versions:
