@@ -11,8 +11,10 @@ if (empty($_SESSION["login"]["username"])) crow\Header\redirect("/login.php");
 /**
  * When on a task's page, show checkbox beside h1.
  * H1 and H3 tags need link to addChild.
- * Completed tasks should be separately grouped.
- * Groups with no leaf nodes should be hidden.
+ * First iteration of function to separate completed tasks away from incomplete reveals that the way we're holding tasks in an array and
+ *     children are only references is actually also overwriting rows when we process them (There's only one $LISTS[6], but we /had/ two
+ *     rows with slightly different data (just parent and idx columns)). This might be a moot issue, but it could be bigger depending on
+ *     how work on modify.php proceeds.
  * //!
  */
 
@@ -51,53 +53,57 @@ class TaskTreeNode {
         return $rv;
     }
 
-    public function generate_html_tasklist($root_node_id): string {
+    public function generate_html_tasklist(): string {
         // Show parentage somehow, reverse navigation
         // Maybe when we cache the sidebar structure we'll create a navigation tree in session, and when we load a new page we'll either find 
         //     the page id as a child of the last page we were on and show a link to go back, or we won't and we'll just highlight the sidebar.
-        $rv = "";
-        if ($this->id == $root_node_id){
-            $rv .= "<div><h1>" . $this->row["text"] . "</h1>";
-            if ($root_node_id != "0") $rv .= "<a href='modify.php?id=" . $this->id . "&action=edit'>...</a>";
-            $rv .= "</div>";
-            for ($i = 0; $i < count($this->children); $i++){
-                $rv .= $this->children[$i]->generate_html_tasklist($root_node_id);
-            }
-        } else {
-            if ($this->row["is_group"]){
-                $rv .= "<group><div><h3 onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</h3><a href='modify.php?id=" . $this->id . "&action=edit'>...</a></div>";
-                for ($i = 0; $i < count($this->children); $i++){
-                    $rv .= $this->children[$i]->generate_html_tasklist($root_node_id);
-                }
-                $rv .= "</group>";
-            } else {
-                $rv .= "<li><input type=checkbox" . (($this->row["complete"])?" checked":"") . " onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete'\"id=\"toggleComplete['" . $this->id . "']\"/><p onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</p><a href='modify.php?id=" . $this->id . "&action=edit'>...</a></li>";
-            }
-        }
-        return $rv;
-    }
+        $headblock = "<div><h1>" . $this->row["text"] . "</h1>";
+        if ($this->id != "0") $headblock .= "<a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>...</a>";
+        $headblock .= "</div>";
 
-    public function separate_completed_items(): array {
-        $INCOMPLETE = [];
-        $COMPLETE = [];
+        $divider = "<div class='midline'><h2>Completed</h2></div>";
+
+        $incomplete = "";
+        $complete = "";
 
         for ($i = 0; $i < count($this->children); $i++){
-            if ($this->children[$i]->row["is_group"]){
-                [$a, $b] = $this->children[$i]->separate_completed_items();
-                if (count($a) > 0){
-                    $INCOMPLETE[] = $this->children[$i];
-                    $INCOMPLETE = array_merge($INCOMPLETE, $a);
-                }
-                if (count($b) > 0 || count($this->children[$i]->children) == 0){
-                    $COMPLETE[] = $this->children[$i];
-                    $COMPLETE = array_merge($COMPLETE, $b);
-                }
+            [$inc, $com] = $this->children[$i]->generate_html_tasklist_r();
+            $incomplete .= $inc;
+            $complete .= $com;
+        }
+        
+        if (strlen($complete) > 0) return $headblock . $incomplete . $divider . $complete;
+        else return $headblock . $incomplete;
+    }
+
+    private function generate_html_tasklist_r(): array {
+        $INCOMPLETE = "";
+        $COMPLETE = "";
+        if ($this->row["is_group"]){
+            $INC = "";
+            $COM = "";
+            for ($i = 0; $i < count($this->children); $i++){
+                [$inc, $com] = $this->children[$i]->generate_html_tasklist_r();
+                $INC .= $inc;
+                $COM .= $com;
+            }
+            $grouphead = "<group><div><h3 onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</h3><a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>...</a></div>";
+            $groupfoot = "</group>";
+            if (strlen($INC) > 0){
+                $INCOMPLETE .= $grouphead . $INC . $groupfoot;
+            }
+            if (strlen($COM) > 0 || count($this->children) == 0){
+                $COMPLETE .= $grouphead . $COM . $groupfoot;
+            }
+        } else {
+            $p1 = "<li><input type=checkbox";
+            $p2 = " onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'\"id=\"toggleComplete['" . $this->id . "']\"/><p onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</p><a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>...</a></li>";
+            if ($this->row["complete"]){
+                $COMPLETE .= $p1 . " checked" . $p2;
             } else {
-                if ($this->children[$i]->row["complete"]) $COMPLETE[] = &$this->children[$i];
-                else $INCOMPLETE[] = &$this->children[$i];
+                $INCOMPLETE .= $p1 . $p2;
             }
         }
-
         return [$INCOMPLETE, $COMPLETE];
     }
 }
@@ -157,16 +163,9 @@ foreach ($query_tasks as $row){
 }
 
 $HTML_Sidebar = $LISTS["0"]->generate_html_sidebar($CURRENT_LIST);
-$HTML_Tasklist = $TASKS[$CURRENT_LIST]->generate_html_tasklist($CURRENT_LIST);
+$HTML_Tasklist = $TASKS[$CURRENT_LIST]->generate_html_tasklist();
 
 include __DIR__ . "/templates/index.php";
-
-[$inc, $com] = $LISTS[0]->separate_completed_items();
-echo "<pre><code>";
-print_r($inc);
-echo "\n\n\n";
-print_r($com);
-echo "</code></pre>";
 
 /**
  * For Future Versions:

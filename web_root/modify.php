@@ -1,5 +1,10 @@
 <?php
 
+require_once __DIR__ . "/lib/crowlib-php/Header/redirect.php";
+
+if (empty($_GET["id"]) || !is_numeric($_GET["id"]) || empty($_GET["action"]) || !array_search($_GET["action"], ["addChild", "edit", "delete", "confirmDelete", "toggleComplete"])) \crow\Header\redirect("/index.php");
+
+//use redirect target in get string; need login test
 /**
  * //!
  * Add/Remove/Edit all in one here.

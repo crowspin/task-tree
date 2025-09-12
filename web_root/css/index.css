@@ -95,7 +95,12 @@ div.main div {
   padding: 8px 15px;
   flex-shrink: 0;
 }
-div.main div h1, div.main div h3 {
+div.main > div.midline {
+  margin-top: 45px;
+}
+div.main div h1,
+div.main div h2,
+div.main div h3 {
   text-decoration: underline;
   margin: 0;
   flex-grow: 1;
