@@ -16,7 +16,6 @@
             </div>
             <div class='sidebar'>
                 <? echo $HTML_Sidebar ?>
-                <option><a href="?pg=0">...</a></option>
             </div>
             <div class='main'>
                 <? echo $HTML_Tasklist ?>

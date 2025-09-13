@@ -32,8 +32,8 @@ class TaskTreeNode {
     }
 
     public function generate_html_sidebar($current_list){
-        $top = "<li class='header'>In Progress</li>";
-        $divider = "<li class='midline header'>Completed</li>";
+        $top = "<li class='header'>In Progress<a href=\"?pg=0\" class=\"option\">&#65049;</a></li>";
+        $divider = "<li class='midline header'>Completed<a href=\"?pg=0\" class=\"option\">&#65049;</a></li>";
         $bottom = "";
         $incomplete = "";
         $complete = "";
@@ -90,7 +90,7 @@ class TaskTreeNode {
         if (!$this->row["is_group"]) $headblock .= "<input type=checkbox" . (($this->row["complete"])?" checked":"") . " onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'\"id=\"toggleComplete['" . $this->id . "']\"/>";
         $headblock .= "<h1>" . $this->row["text"] . "</h1>";
         $headblock .= "<a href='modify.php?id=" . $this->id . "&action=addChild" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>+</a>";
-        if ($this->id != "0") $headblock .= "<a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>...</a>";
+        if ($this->id != "0") $headblock .= "<a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>&#65049;</a>";
         $headblock .= "</div>";
 
         $divider = "<div class='midline'><h2>Completed</h2></div>";
@@ -99,7 +99,7 @@ class TaskTreeNode {
         $complete = "";
 
         for ($i = 0; $i < count($this->children); $i++){
-            [$inc, $com] = $this->children[$i]->generate_html_tasklist_r();
+            [$inc, $com] = $this->children[$i]->generate_html_tasklist_r($this->id);
             $incomplete .= $inc;
             $complete .= $com;
         }
@@ -108,18 +108,27 @@ class TaskTreeNode {
         else return $headblock . $incomplete;
     }
 
-    private function generate_html_tasklist_r(): array {
+    //Could add test for "if parent has only one child then don't display shiftUp/shiftDown"
+    //Could also simplify html by defining parts that are the same across both groups in one place instead of having two sides to it...
+    private function generate_html_tasklist_r($parent_id): array {
         $INCOMPLETE = "";
         $COMPLETE = "";
         if ($this->row["is_group"]){
             $INC = "";
             $COM = "";
             for ($i = 0; $i < count($this->children); $i++){
-                [$inc, $com] = $this->children[$i]->generate_html_tasklist_r();
+                [$inc, $com] = $this->children[$i]->generate_html_tasklist_r($this->id);
                 $INC .= $inc;
                 $COM .= $com;
             }
-            $grouphead = "<group><div><h3 onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</h3><a href='modify.php?id=" . $this->id . "&action=addChild" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>+</a><a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>...</a></div>";
+            $grouphead = "<group>";
+            $grouphead .=   "<div>";
+            $grouphead .=       "<h3 onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</h3>";
+            $grouphead .=       "<a href='modify.php?id=" . $this->id . "&action=addChild" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>+</a>";
+            $grouphead .=       "<a href=\"modify.php?id=" . $this->id . "&action=shiftUp&parent=" . $parent_id . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "\">&#129033;</a>";
+            $grouphead .=       "<a href=\"modify.php?id=" . $this->id . "&action=shiftDown&parent=" . $parent_id . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "\">&#129035;</a>";
+            $grouphead .=       "<a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>&#65049;</a>";
+            $grouphead .=   "</div>";
             $groupfoot = "</group>";
             if (strlen($INC) > 0){
                 $INCOMPLETE .= $grouphead . $INC . $groupfoot;
@@ -128,8 +137,14 @@ class TaskTreeNode {
                 $COMPLETE .= $grouphead . $COM . $groupfoot;
             }
         } else {
-            $p1 = "<li><input type=checkbox";
-            $p2 = " onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'\"id=\"toggleComplete['" . $this->id . "']\"/><p onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</p><a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>...</a></li>";
+            $p1 = "<li>";
+            $p1 .=      "<input type=checkbox";
+            $p2 =                           " onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'\"id=\"toggleComplete['" . $this->id . "']\"/>";
+            $p2 .=      "<p onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</p>";
+            $p2 .=      "<a href=\"modify.php?id=" . $this->id . "&action=shiftUp&parent=" . $parent_id . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "\">&#129033;</a>";
+            $p2 .=      "<a href=\"modify.php?id=" . $this->id . "&action=shiftDown&parent=" . $parent_id . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "\">&#129035;</a>";
+            $p2 .=      "<a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>&#65049;</a>";
+            $p2 .= "</li>";
             if ($this->row["complete"]){
                 $COMPLETE .= $p1 . " checked" . $p2;
             } else {

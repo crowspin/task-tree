@@ -32,7 +32,7 @@ $qs = "WITH RECURSIVE cte AS (
 	JOIN    tasks_%0 cld ON cld.id = rel.child
 )
 SELECT *, 'root' AS parent, null AS idx FROM tasks_%0 WHERE id = %1 
-UNION ALL SELECT * FROM cte r";
+UNION ALL SELECT DISTINCT * FROM cte r";
 
 $query_root = $sql->query($qs, [$_SESSION["login"]["id"], $q_rid]);
 if (!$query_root->success){
@@ -44,6 +44,11 @@ if (!$query_root->success){
  *     children are only references is actually also overwriting rows when we process them (There's only one $LISTS[6], but we /had/ two
  *     rows with slightly different data (just parent and idx columns)). This might be a moot issue, but it could be bigger depending on
  *     how work on modify.php proceeds.
+ * Use of arrays $LISTS and $TASKS is already relegated to the area below. Changing how we work with the data to use a proper tree structure
+ *      shouldn't be too troublesome. This is where we're coming back to later.
+ * I've decided that changing this is unneccesary (and difficult). I couldn't reason a way around changing this that I thought wouldn't
+ *      cascade into another rewrite. Fact is that the parent and idx columns are only used in the processing below, so there isn't
+ *      any issue with rows overwriting themselves. The linkage isn't affected, so all is well.
  */
 
 $LISTS = [];

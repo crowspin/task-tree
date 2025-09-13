@@ -57,7 +57,10 @@ div.sidebar li {
   flex-shrink: 0;
 }
 div.sidebar > li.header {
-  border-bottom: 1px solid grey
+  border-bottom: 1px solid grey;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
 }
 div.sidebar > li.midline {
   margin-top: 45px;
@@ -71,6 +74,13 @@ div.sidebar li a {
   color: black;
   text-decoration: none;
 }
+div.sidebar li a.option,
+div.sidebar li a.option:visited {
+  margin-left: auto;
+  color: blue;
+  font-family: monospace;
+  font-size: 1.3em;
+}
 div.sidebar li a:visited {
   color: black;
 }
@@ -78,10 +88,6 @@ div.sidebar li img {
   width: 0.9em;
   height: 0.9em;
   margin-right: 0.5em;
-}
-div.sidebar option {
-  margin-top: auto;
-  margin-left: auto;
 }
 div.main {
   grid-area: main;
@@ -92,6 +98,7 @@ div.main {
 }
 div.main > a {
   margin-left: auto;
+  margin-bottom: 10px;
 }
 div.main div {
   border: 1px solid black;
@@ -141,4 +148,8 @@ div.main li p {
   flex-grow: 1;
   margin: 0;
   cursor: pointer;
+}
+div.main div a,
+div.main li a {
+  text-decoration: none;
 }
