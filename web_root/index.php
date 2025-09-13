@@ -39,18 +39,6 @@ if (!$query_root->success){
     //query failed
 }
 
-/**
- * First iteration of function to separate completed tasks away from incomplete revealed that the way we're holding tasks in an array and
- *     children are only references is actually also overwriting rows when we process them (There's only one $LISTS[6], but we /had/ two
- *     rows with slightly different data (just parent and idx columns)). This might be a moot issue, but it could be bigger depending on
- *     how work on modify.php proceeds.
- * Use of arrays $LISTS and $TASKS is already relegated to the area below. Changing how we work with the data to use a proper tree structure
- *      shouldn't be too troublesome. This is where we're coming back to later.
- * I've decided that changing this is unneccesary (and difficult). I couldn't reason a way around changing this that I thought wouldn't
- *      cascade into another rewrite. Fact is that the parent and idx columns are only used in the processing below, so there isn't
- *      any issue with rows overwriting themselves. The linkage isn't affected, so all is well.
- */
-
 $LISTS = [];
 foreach ($query_root as $row){
     $LISTS[$row["id"]] = new TaskTreeNode($row);

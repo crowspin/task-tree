@@ -21,6 +21,7 @@
                     <input type="password" placeholder="Password" name="pw">
                     <br>
                     <input type="submit" value="Login" name="submit">
+                    <input type="submit" value="Register" name="regi" formaction="register.php">
                 </form>
             <?}?>
         </block>

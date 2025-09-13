@@ -87,7 +87,7 @@ class TaskTreeNode {
         } else $reverseNavLink = "";
         
         $headblock = "$reverseNavLink<div>";
-        if (!$this->row["is_group"]) $headblock .= "<input type=checkbox" . (($this->row["complete"])?" checked":"") . " onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'\"id=\"toggleComplete['" . $this->id . "']\"/>";
+        if (!$this->row["is_group"]) $headblock .= "<input type=checkbox" . (($this->row["complete"])?" checked":"") . " onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'\"/>";
         $headblock .= "<h1>" . $this->row["text"] . "</h1>";
         $headblock .= "<a href='modify.php?id=" . $this->id . "&action=addChild" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>+</a>";
         if ($this->id != "0") $headblock .= "<a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>&#65049;</a>";
@@ -139,7 +139,7 @@ class TaskTreeNode {
         } else {
             $p1 = "<li>";
             $p1 .=      "<input type=checkbox";
-            $p2 =                           " onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'\"id=\"toggleComplete['" . $this->id . "']\"/>";
+            $p2 =                           " onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'\"/>";
             $p2 .=      "<p onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</p>";
             $p2 .=      "<a href=\"modify.php?id=" . $this->id . "&action=shiftUp&parent=" . $parent_id . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "\">&#129033;</a>";
             $p2 .=      "<a href=\"modify.php?id=" . $this->id . "&action=shiftDown&parent=" . $parent_id . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "\">&#129035;</a>";
