@@ -109,6 +109,7 @@ class TaskTreeNode {
     }
 
     //Could add test for "if parent has only one child then don't display shiftUp/shiftDown"
+    //And tests for "if *can* move up/down"
     //Could also simplify html by defining parts that are the same across both groups in one place instead of having two sides to it...
     private function generate_html_tasklist_r($parent_id): array {
         $INCOMPLETE = "";
