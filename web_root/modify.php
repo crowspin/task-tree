@@ -7,7 +7,7 @@ require_once __DIR__ . "/lib/crowlib-php/IO/SQLFactory.php";
 $redirect_address = "/index.php";
 if (isset($_GET["returnTo"]) && is_numeric($_GET["returnTo"])) $redirect_address .= "?pg=" . $_GET["returnTo"];
 
-if (!isset($_GET["id"]) || !is_numeric($_GET["id"]) || empty($_GET["action"]) || !array_search($_GET["action"], ["addChild", "edit", "delete", "toggleComplete", "shiftUp", "shiftDown"])) \crow\Header\redirect($redirect_address);
+if (!isset($_GET["id"]) || !is_numeric($_GET["id"]) || empty($_GET["action"]) || !array_search($_GET["action"], ["", "addChild", "edit", "delete", "toggleComplete", "shiftUp", "shiftDown"])) \crow\Header\redirect($redirect_address);
 
 if (!crow\Session\open()) die();
 if (empty($_SESSION["login"]["username"]) || empty($_SESSION["login"]["id"])) crow\Header\redirect("/login.php");
@@ -52,12 +52,17 @@ function add_child(){
  * Future INSERTs can be done by fetching lowest unused id, using following query:
  *      SELECT (Min(ID) + 1) AS NewIDToInsert FROM TableName T2A WHERE NOT EXISTS (SELECT ID FROM TableName T2B WHERE T2A.ID + 1 = T2B.ID)
  */
-    //!
+    //! txt, is_group
+    //is_group either "on" or unset
 
+    //\crow\Header\redirect($GLOBALS["redirect_address"]);
 }
 
 function edit(){
-    //!
+    //! txt, is_group, complete
+    //is_group/complete either "on" or unset
+
+    //\crow\Header\redirect($GLOBALS["redirect_address"]);
 }
 
 switch($_GET["action"]){
@@ -68,7 +73,10 @@ switch($_GET["action"]){
     case "addChild":
         if (isset($_POST["submit"])) add_child();
         else if (isset($_POST["back"])) \crow\Header\redirect($redirect_address);
-        else include __DIR__ . "/templates/modify.edit.php";
+        else {
+            $EDIT_VALS = ["text" => "", "is_group" => false];
+            include __DIR__ . "/templates/modify.edit.php";
+        }
         break;
     case "edit":
         if (isset($_POST["submit"])) edit();
@@ -84,7 +92,10 @@ switch($_GET["action"]){
             \crow\Header\redirect($redirect_address);
         }
         else if (isset($_POST["back"])) \crow\Header\redirect($redirect_address);
-        else include __DIR__ . "/templates/modify.delete.php";
+        else {
+            $TEXT = $sql->query("SELECT text FROM tasks_%0 WHERE id=%1", [$_SESSION["login"]["id"], $_GET["id"]])[0]["text"];
+            include __DIR__ . "/templates/modify.delete.php";
+        }
         break;
     case "shiftUp":
         shift(true, function($old_idx, $result){
