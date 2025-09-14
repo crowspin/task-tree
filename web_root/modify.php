@@ -48,21 +48,31 @@ function shift(bool $up, callable $conditional){
 }
 
 function add_child(){
-/**
- * Future INSERTs can be done by fetching lowest unused id, using following query:
- *      SELECT (Min(ID) + 1) AS NewIDToInsert FROM TableName T2A WHERE NOT EXISTS (SELECT ID FROM TableName T2B WHERE T2A.ID + 1 = T2B.ID)
- */
-    //! txt, is_group
-    //is_group either "on" or unset
+    if (empty($_POST["txt"])) \crow\Header\redirect($GLOBALS["redirect_address"]);
 
-    //\crow\Header\redirect($GLOBALS["redirect_address"]);
+    $id = $GLOBALS["sql"]->query("SELECT (Min(id) + 1) AS NewIDToInsert FROM tasks_%0 T2A WHERE NOT EXISTS (SELECT id FROM tasks_%0 T2B WHERE T2A.id + 1 = T2B.id);", [$_SESSION["login"]["id"]])[0]["NewIDToInsert"];
+    $idx = $GLOBALS["sql"]->query("WITH cte AS (SELECT * FROM relations_%0 WHERE parent=%1) SELECT (Min(idx) + 1) AS NewIDToInsert FROM cte T2A WHERE NOT EXISTS (SELECT idx FROM cte T2B WHERE T2A.idx + 1 = T2B.idx);", [$_SESSION["login"]["id"], $_GET["id"]])[0]["NewIDToInsert"] ?: 0;
+    $safe_txt = $_POST["txt"];//scrub
+    $is_group = (!empty($_POST["is_group"]))?b'1':b'0';
+    $complete = (!empty($_POST["complete"]))?b'1':b'0';
+
+    $GLOBALS["sql"]->query("INSERT INTO tasks_%0 (id, text, is_group, complete) VALUES (%1, '%2', %3, %4);", [$_SESSION["login"]["id"], $id, $safe_txt, $is_group, $complete]);
+    $GLOBALS["sql"]->query("INSERT INTO relations_%0 (parent, child, idx) VALUES (%1, %2, %3);", [$_SESSION["login"]["id"], $_GET["id"], $id, $idx]);
+
+    \crow\Header\redirect($GLOBALS["redirect_address"]);
 }
 
 function edit(){
-    //! txt, is_group, complete
-    //is_group/complete either "on" or unset
+    if (empty($_POST["txt"])) \crow\Header\redirect($GLOBALS["redirect_address"]);
 
-    //\crow\Header\redirect($GLOBALS["redirect_address"]);
+    $id = $_GET["id"];
+    $safe_txt = $_POST["txt"];//scrub
+    $is_group = (!empty($_POST["is_group"]))?b'1':b'0';
+    $complete = (!empty($_POST["complete"]))?b'1':b'0';
+
+    $GLOBALS["sql"]->query("UPDATE tasks_%0 SET text='%2', is_group=%3, complete=%4 WHERE id=%1;", [$_SESSION["login"]["id"], $id, $safe_txt, $is_group, $complete]);
+
+    \crow\Header\redirect($GLOBALS["redirect_address"]);
 }
 
 switch($_GET["action"]){
@@ -80,6 +90,7 @@ switch($_GET["action"]){
         break;
     case "edit":
         if (isset($_POST["submit"])) edit();
+        else if (isset($_POST["del"])) \crow\Header\redirect("/modify.php?id=" . $_GET["id"] . "&action=delete&returnTo=" . $_GET["returnTo"]);
         else if (isset($_POST["back"])) \crow\Header\redirect($redirect_address);
         else {
             $EDIT_VALS = $sql->query("SELECT is_group, text, complete FROM tasks_%0 WHERE id=%1", [$_SESSION["login"]["id"], $_GET["id"]])[0];
@@ -89,6 +100,7 @@ switch($_GET["action"]){
     case "delete":
         if (isset($_POST["delete"])){
             $sql->query("DELETE FROM tasks_%0 WHERE `tasks_%0`.`id` = %1", [$_SESSION["login"]["id"], $_GET["id"]]);
+            $sql->query("DELETE FROM relations_%0 WHERE parent=%1 OR child=%1", [$_SESSION["login"]["id"], $_GET["id"]]);
             \crow\Header\redirect($redirect_address);
         }
         else if (isset($_POST["back"])) \crow\Header\redirect($redirect_address);
@@ -108,3 +120,51 @@ switch($_GET["action"]){
         });
         break;
 }
+/*
+Working on SQL Queries for delete:
+
+
+delete rows
+idxs need to be recalculated
+Second we need to clear all references to this row from relations_ table, in either parent or child columns
+
+#Selects all rows from tasks_ that need to be deleted.
+WITH RECURSIVE cte AS (
+	SELECT	a.*, b.parent, b.idx
+	FROM	tasks_1 AS a
+    JOIN    relations_1 AS b
+	ON      a.id = b.child AND b.parent = 4 AND (SELECT COUNT(*) FROM relations_1 AS b WHERE b.child=a.id)=1
+	UNION ALL 
+    SELECT	cld.*, rel.parent, rel.idx
+	FROM	cte prt
+    JOIN    relations_1 rel ON prt.id = rel.parent
+	JOIN    tasks_1 cld ON cld.id = rel.child
+)
+#Try to delete, fail, reason unknown
+#if can return id, then can we use that for clearing relation? else work on relation first
+
+DELETE FROM tasks_1 WHERE id IN(SELECT id from cte) RETURNING id;
+#DELETE FROM tasks_1 WHERE id IN (SELECT id FROM cte WHERE 1);
+
+#DELETE FROM tasks_1 WHERE id = 4;
+
+
+
+INSERT IGNORE INTO `tasks_1` (`id`, `complete`, `is_group`, `text`) VALUES
+(0, b'0', b'1', 'Editing Lists...'),
+(1, b'0', b'0', 'Tasks'),
+(2, b'0', b'0', 'Shopping'),
+(3, b'0', b'1', 'Christmas 2025'),
+(4, b'0', b'1', 'Responsibilities'),
+(5, b'0', b'1', 'Housework'),
+(6, b'0', b'0', 'Evening Chores'),
+(7, b'0', b'0', 'Make Dinner'),
+(8, b'0', b'0', 'Drink your coffee'),
+(9, b'0', b'0', 'test'),
+(10, b'0', b'0', 'test2'),
+(11, b'0', b'0', 'testun'),
+(12, b'0', b'0', 'adgaef'),
+(13, b'0', b'0', 'feaasef');
+
+CREATE TEMPORARY TABLE to_delete LIKE tasks_1;
+

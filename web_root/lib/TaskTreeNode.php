@@ -126,8 +126,8 @@ class TaskTreeNode {
             $grouphead .=   "<div>";
             $grouphead .=       "<h3 onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</h3>";
             $grouphead .=       "<a href='modify.php?id=" . $this->id . "&action=addChild" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>+</a>";
-            $grouphead .=       "<a href=\"modify.php?id=" . $this->id . "&action=shiftUp&parent=" . $parent_id . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "\">&#129033;</a>";
-            $grouphead .=       "<a href=\"modify.php?id=" . $this->id . "&action=shiftDown&parent=" . $parent_id . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "\">&#129035;</a>";
+            $grouphead .=       "<a href=\"modify.php?id=" . $this->id . "&action=shiftUp&parent=" . $parent_id . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "\">&uarr;</a>";
+            $grouphead .=       "<a href=\"modify.php?id=" . $this->id . "&action=shiftDown&parent=" . $parent_id . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "\">&darr;</a>";
             $grouphead .=       "<a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>&#65049;</a>";
             $grouphead .=   "</div>";
             $groupfoot = "</group>";
@@ -142,8 +142,8 @@ class TaskTreeNode {
             $p1 .=      "<input type=checkbox";
             $p2 =                           " onclick=\"location.href='modify.php?id=" . $this->id . "&action=toggleComplete" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'\"/>";
             $p2 .=      "<p onclick=\"location.href='?pg=" . $this->id . "'\">" . $this->row["text"] . "</p>";
-            $p2 .=      "<a href=\"modify.php?id=" . $this->id . "&action=shiftUp&parent=" . $parent_id . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "\">&#129033;</a>";
-            $p2 .=      "<a href=\"modify.php?id=" . $this->id . "&action=shiftDown&parent=" . $parent_id . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "\">&#129035;</a>";
+            $p2 .=      "<a href=\"modify.php?id=" . $this->id . "&action=shiftUp&parent=" . $parent_id . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "\">&uarr;</a>";
+            $p2 .=      "<a href=\"modify.php?id=" . $this->id . "&action=shiftDown&parent=" . $parent_id . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "\">&darr;</a>";
             $p2 .=      "<a href='modify.php?id=" . $this->id . "&action=edit" . ((isset($_GET["pg"]) && $_GET["pg"] != "")?"&returnTo=" . $_GET["pg"]:"") . "'>&#65049;</a>";
             $p2 .= "</li>";
             if ($this->row["complete"]){

@@ -18,8 +18,11 @@
                     <label for="complete">Is Complete?</label>
                 <? } ?>
                 <br>
-                <input type="submit" value="<? echo (isset($EDIT_VALS["complete"]))?"Submit Changes":"Add new task"; ?>" name="submit">
+                <? if (isset($EDIT_VALS["complete"])){?>
+                    <input type="submit" value="Delete this task" name="del">
+                <? } ?>
                 <input type="submit" value="Cancel" name="back">
+                <input type="submit" value="<? echo (isset($EDIT_VALS["complete"]))?"Submit Changes":"Add new task"; ?>" name="submit">
             </form>
         </block>
     </body>
