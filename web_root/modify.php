@@ -123,33 +123,6 @@ switch($_GET["action"]){
 /*
 Working on SQL Queries for delete:
 
-
-delete rows
-idxs need to be recalculated
-Second we need to clear all references to this row from relations_ table, in either parent or child columns
-
-#Selects all rows from tasks_ that need to be deleted.
-WITH RECURSIVE cte AS (
-	SELECT	a.*, b.parent, b.idx
-	FROM	tasks_1 AS a
-    JOIN    relations_1 AS b
-	ON      a.id = b.child AND b.parent = 4 AND (SELECT COUNT(*) FROM relations_1 AS b WHERE b.child=a.id)=1
-	UNION ALL 
-    SELECT	cld.*, rel.parent, rel.idx
-	FROM	cte prt
-    JOIN    relations_1 rel ON prt.id = rel.parent
-	JOIN    tasks_1 cld ON cld.id = rel.child
-)
-#Try to delete, fail, reason unknown
-#if can return id, then can we use that for clearing relation? else work on relation first
-
-DELETE FROM tasks_1 WHERE id IN(SELECT id from cte) RETURNING id;
-#DELETE FROM tasks_1 WHERE id IN (SELECT id FROM cte WHERE 1);
-
-#DELETE FROM tasks_1 WHERE id = 4;
-
-
-
 INSERT IGNORE INTO `tasks_1` (`id`, `complete`, `is_group`, `text`) VALUES
 (0, b'0', b'1', 'Editing Lists...'),
 (1, b'0', b'0', 'Tasks'),
@@ -164,7 +137,77 @@ INSERT IGNORE INTO `tasks_1` (`id`, `complete`, `is_group`, `text`) VALUES
 (10, b'0', b'0', 'test2'),
 (11, b'0', b'0', 'testun'),
 (12, b'0', b'0', 'adgaef'),
-(13, b'0', b'0', 'feaasef');
+(13, b'0', b'0', 'feaasef'),
+(14, b'0', b'0', 'another brankc');
+INSERT IGNORE INTO `relations_1` (`parent`, `child`, `idx`) VALUES
+(0, 1, 0),
+(0, 3, 2),
+(0, 4, 1),
+(0, 5, 3),
+(3, 2, 0),
+(3, 13, 0),
+(4, 5, 0),
+(4, 9, 1),
+(4, 10, 2),
+(5, 6, 0),
+(6, 7, 0),
+(7, 8, 0),
+(9, 13, 0),
+(10, 11, 0),
+(10, 12, 1),
+(11, 14, 0),
+(12, 14, 0);
 
-CREATE TEMPORARY TABLE to_delete LIKE tasks_1;
+create or replace temporary table to_delete (id smallint unsigned)
+WITH RECURSIVE cte AS (
+	SELECT	a.id
+	FROM	tasks_1 AS a
+    JOIN    relations_1 AS b
+	ON      a.id = b.child AND b.parent = 4
+	UNION ALL 
+    SELECT	cld.id
+	FROM	cte prt
+    JOIN    relations_1 rel ON prt.id = rel.parent
+	JOIN    tasks_1 cld ON cld.id = rel.child
+) select 4 as id union all select * from cte;
 
+# select * from to_delete;
+
+create or replace temporary table exceptions (id smallint unsigned)
+with recursive cte as (
+    select a.id from to_delete as a
+    join relations_1 as b
+    on a.id != 4 and a.id = b.child and b.parent not in (select id from to_delete union all select 4)
+    union all
+    select b.child
+    from cte
+    join relations_1 as b
+    on cte.id = b.parent
+) select * from cte;
+
+# select * from exceptions;
+
+delete from to_delete where to_delete.id in (select * from exceptions);
+
+# select * from to_delete;
+
+delete from tasks_1 where id in (select * from to_delete);
+delete from relations_1 where parent in (select * from to_delete);
+
+create or replace temporary table links like relations_1;
+insert into links (select * from relations_1 where relations_1.child = 4);
+
+update relations_1, links set relations_1.idx = relations_1.idx-1 where links.parent = relations_1.parent and relations_1.idx > links.idx;
+delete from relations_1 where child = 4;
+
+
+
+Idea about future many-to-many ui linkage thing
+Use XHR flyout (
+    list of tasks starting with children of root
+    each task/group whatever has a checkbox
+    if you click checkbox, that's the one you're linking to
+    if you click text you navigate into that task/group to choose from it's children
+    should have .. option to move up tree
+    )
+Tasks must not ever have cyclical parentage
