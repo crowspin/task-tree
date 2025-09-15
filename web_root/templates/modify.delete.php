@@ -10,8 +10,8 @@
             <form method="POST">
                 Are you sure you want to delete the task: "<i><? echo $TEXT; ?></i>"?
                 <br>
-                <input type="submit" value="Yes, delete it." name="delete">
                 <input type="submit" value="No, leave it be." name="back">
+                <input type="submit" value="Yes, delete it." name="delete">
             </form>
         </block>
     </body>

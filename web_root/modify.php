@@ -75,6 +75,47 @@ function edit(){
     \crow\Header\redirect($GLOBALS["redirect_address"]);
 }
 
+function delete(){
+    $queryData = [$_SESSION["login"]["id"], $_GET["id"]];
+    $sql = $GLOBALS["sql"];
+    $sql->autocommit(false);
+    $sql->begin_transaction();
+    $sql->query("create or replace temporary table to_delete (id smallint unsigned)
+    WITH RECURSIVE cte AS (
+        SELECT	a.id
+        FROM	tasks_%0 AS a
+        JOIN    relations_%0 AS b
+        ON      a.id = b.child AND b.parent = %1
+        UNION ALL 
+        SELECT	cld.id
+        FROM	cte prt
+        JOIN    relations_%0 rel ON prt.id = rel.parent
+        JOIN    tasks_%0 cld ON cld.id = rel.child
+    ) select %1 as id union all select * from cte;", $queryData);
+    $sql->query("create or replace temporary table exceptions (id smallint unsigned)
+    with recursive cte as (
+        select a.id from to_delete as a
+        join relations_%0 as b
+        on a.id != %1 and a.id = b.child and b.parent not in (select id from to_delete union all select %1)
+        union all
+        select b.child
+        from cte
+        join relations_%0 as b
+        on cte.id = b.parent
+    ) select * from cte;", $queryData);
+    $sql->query("delete from to_delete where to_delete.id in (select * from exceptions);", $queryData);
+    $sql->query("delete from tasks_%0 where id in (select * from to_delete);", $queryData);
+    $sql->query("delete from relations_%0 where parent in (select * from to_delete);", $queryData);
+    $sql->query("create or replace temporary table links like relations_%0;", $queryData);
+    $sql->query("insert into links (select * from relations_%0 where relations_%0.child = %1);", $queryData);
+    $sql->query("update relations_%0, links set relations_%0.idx = relations_%0.idx-1 where links.parent = relations_%0.parent and relations_%0.idx > links.idx;", $queryData);
+    $sql->query("delete from relations_%0 where child = %1;", $queryData);
+    $sql->commit();
+    $sql->autocommit(true);
+
+    \crow\Header\redirect($GLOBALS["redirect_address"]);
+}
+
 switch($_GET["action"]){
     case "toggleComplete":
         $sql->query("UPDATE `tasks_%0` SET `complete` = !`complete` WHERE `tasks_%0`.`id` = %1; ", [$_SESSION["login"]["id"], $_GET["id"]]);
@@ -98,11 +139,7 @@ switch($_GET["action"]){
         }
         break;
     case "delete":
-        if (isset($_POST["delete"])){
-            $sql->query("DELETE FROM tasks_%0 WHERE `tasks_%0`.`id` = %1", [$_SESSION["login"]["id"], $_GET["id"]]);
-            $sql->query("DELETE FROM relations_%0 WHERE parent=%1 OR child=%1", [$_SESSION["login"]["id"], $_GET["id"]]);
-            \crow\Header\redirect($redirect_address);
-        }
+        if (isset($_POST["delete"])) delete();
         else if (isset($_POST["back"])) \crow\Header\redirect($redirect_address);
         else {
             $TEXT = $sql->query("SELECT text FROM tasks_%0 WHERE id=%1", [$_SESSION["login"]["id"], $_GET["id"]])[0]["text"];
@@ -121,87 +158,6 @@ switch($_GET["action"]){
         break;
 }
 /*
-Working on SQL Queries for delete:
-
-INSERT IGNORE INTO `tasks_1` (`id`, `complete`, `is_group`, `text`) VALUES
-(0, b'0', b'1', 'Editing Lists...'),
-(1, b'0', b'0', 'Tasks'),
-(2, b'0', b'0', 'Shopping'),
-(3, b'0', b'1', 'Christmas 2025'),
-(4, b'0', b'1', 'Responsibilities'),
-(5, b'0', b'1', 'Housework'),
-(6, b'0', b'0', 'Evening Chores'),
-(7, b'0', b'0', 'Make Dinner'),
-(8, b'0', b'0', 'Drink your coffee'),
-(9, b'0', b'0', 'test'),
-(10, b'0', b'0', 'test2'),
-(11, b'0', b'0', 'testun'),
-(12, b'0', b'0', 'adgaef'),
-(13, b'0', b'0', 'feaasef'),
-(14, b'0', b'0', 'another brankc');
-INSERT IGNORE INTO `relations_1` (`parent`, `child`, `idx`) VALUES
-(0, 1, 0),
-(0, 3, 2),
-(0, 4, 1),
-(0, 5, 3),
-(3, 2, 0),
-(3, 13, 0),
-(4, 5, 0),
-(4, 9, 1),
-(4, 10, 2),
-(5, 6, 0),
-(6, 7, 0),
-(7, 8, 0),
-(9, 13, 0),
-(10, 11, 0),
-(10, 12, 1),
-(11, 14, 0),
-(12, 14, 0);
-
-create or replace temporary table to_delete (id smallint unsigned)
-WITH RECURSIVE cte AS (
-	SELECT	a.id
-	FROM	tasks_1 AS a
-    JOIN    relations_1 AS b
-	ON      a.id = b.child AND b.parent = 4
-	UNION ALL 
-    SELECT	cld.id
-	FROM	cte prt
-    JOIN    relations_1 rel ON prt.id = rel.parent
-	JOIN    tasks_1 cld ON cld.id = rel.child
-) select 4 as id union all select * from cte;
-
-# select * from to_delete;
-
-create or replace temporary table exceptions (id smallint unsigned)
-with recursive cte as (
-    select a.id from to_delete as a
-    join relations_1 as b
-    on a.id != 4 and a.id = b.child and b.parent not in (select id from to_delete union all select 4)
-    union all
-    select b.child
-    from cte
-    join relations_1 as b
-    on cte.id = b.parent
-) select * from cte;
-
-# select * from exceptions;
-
-delete from to_delete where to_delete.id in (select * from exceptions);
-
-# select * from to_delete;
-
-delete from tasks_1 where id in (select * from to_delete);
-delete from relations_1 where parent in (select * from to_delete);
-
-create or replace temporary table links like relations_1;
-insert into links (select * from relations_1 where relations_1.child = 4);
-
-update relations_1, links set relations_1.idx = relations_1.idx-1 where links.parent = relations_1.parent and relations_1.idx > links.idx;
-delete from relations_1 where child = 4;
-
-
-
 Idea about future many-to-many ui linkage thing
 Use XHR flyout (
     list of tasks starting with children of root
@@ -211,3 +167,4 @@ Use XHR flyout (
     should have .. option to move up tree
     )
 Tasks must not ever have cyclical parentage
+*/
