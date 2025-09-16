@@ -13,21 +13,21 @@ The big difference from Microsoft's style is that I intend to use a many-to-many
 - [x] Build basic webpage with static sidebar
   - [x] Sidebar lists tasks upgraded to "Lists"
   - [x] Lists can be categorized as well
-  - [ ] Main screen:
+  - [x] Main screen:
     - [x] Should show "category"-class tasks as potentially collapsible group
     - [x] Should display only categories that are children of selected list
     - [x] Categories should only display tasks that are children
-    - [ ] Categories should be re-arrangable, optional (if user needs to do List->A->1, then List->B->1, then List->A->2 in order, the applet should allow that arrangement)<sup>1</sup>
+    - [x] Categories should be re-arrangable, optional (if user needs to do List->A->1, then List->B->1, then List->A->2 in order, the applet should allow that arrangement)<sup>1</sup>
     - [x] Separate view should be made visible when a task (of any classification) is selected
   - [ ] ~~Should have an automatic "My Day" list that allows alternate grouping<sup>1</sup> and which suggests new tasks, collects tasks due same-day, and retains tasks due yesterday in-order, automatically.~~
   - [ ] ~~In PWA mode should support swipe-actions (swipe left to delete, swipe right to add to your day, etc)(configurable)~~
 - [ ] ~~Consider possibility of making lists accessible to multiple people for group projects~~
-- [ ] Readme needs to explain how to clone and run
+- [ ] **Readme needs to explain how to clone and run**
 - [x] Should have the option for categories in any list-like placement
-- [ ] Add/Remove/Edit anything.
+- [x] Add/Remove/Edit anything.
 
 ##### Tasks should...
-- [ ] Have 'completion' boolean
+- [x] Have 'completion' boolean
 - [ ] ~~Have 'urgent' boolean~~
 - [x] Permit string up to (256? 512?) characters as primary descriptor
 - [x] Have 'priority' or 'order' within list/category

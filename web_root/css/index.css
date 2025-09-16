@@ -38,8 +38,8 @@ div.sidebar {
   padding: 15px;
   border-radius: 5px;
   white-space: nowrap;
-  min-width: 17.5vw;
-  max-width: 33vw;
+  min-width: min(17.5vw, 200px);
+  max-width: min(33vw, 300px);
   display: flex;
   flex-direction: column;
   overflow: scroll;

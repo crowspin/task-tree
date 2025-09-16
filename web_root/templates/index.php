@@ -12,7 +12,7 @@
                     TaskTree
                     <small> a prototype </small>
                 </div>
-                <options>xer01ne (<a href="logout.php">Logout</a>)</options>
+                <options><? echo $_SESSION["login"]["username"] ?> (<a href="logout.php">Logout</a>)</options>
             </div>
             <div class='sidebar'>
                 <? echo $HTML_Sidebar ?>

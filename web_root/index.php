@@ -55,7 +55,6 @@ $CURRENT_LIST = (isset($_GET["pg"]) && $_GET["pg"] != "") ? $_GET["pg"] : $first
 $query_tasks = $sql->query($qs/*Pagination/ . " LIMIT 50 OFFSET " . 0*/, [$_SESSION["login"]["id"], $CURRENT_LIST]);
 if (!$query_tasks->success || count($query_tasks) == 0){
     //query failed
-    //! After a row is deleted we will end up here, 
     if (count($_SESSION["reverseNav"]) > 1) \crow\Header\redirect("/index.php?pg=" . $_SESSION["reverseNav"][count($_SESSION["reverseNav"])-2][0]);
     else \crow\Header\redirect("/index.php");
     

@@ -3,6 +3,7 @@
 require_once __DIR__ . "/lib/crowlib-php/Header/redirect.php";
 require_once __DIR__ . "/lib/crowlib-php/Session/open.php";
 require_once __DIR__ . "/lib/crowlib-php/IO/SQLFactory.php";
+require_once __DIR__ . "/lib/crowlib-php/Auth/Scrub/textbox.php";
 
 $redirect_address = "/index.php";
 if (isset($_GET["returnTo"]) && is_numeric($_GET["returnTo"])) $redirect_address .= "?pg=" . $_GET["returnTo"];
@@ -52,7 +53,7 @@ function add_child(){
 
     $id = $GLOBALS["sql"]->query("SELECT (Min(id) + 1) AS NewIDToInsert FROM tasks_%0 T2A WHERE NOT EXISTS (SELECT id FROM tasks_%0 T2B WHERE T2A.id + 1 = T2B.id);", [$_SESSION["login"]["id"]])[0]["NewIDToInsert"];
     $idx = $GLOBALS["sql"]->query("WITH cte AS (SELECT * FROM relations_%0 WHERE parent=%1) SELECT (Min(idx) + 1) AS NewIDToInsert FROM cte T2A WHERE NOT EXISTS (SELECT idx FROM cte T2B WHERE T2A.idx + 1 = T2B.idx);", [$_SESSION["login"]["id"], $_GET["id"]])[0]["NewIDToInsert"] ?: 0;
-    $safe_txt = $_POST["txt"];//scrub
+    $safe_txt = \crow\Auth\Scrub\textbox($_POST["txt"]);
     $is_group = (!empty($_POST["is_group"]))?b'1':b'0';
     $complete = (!empty($_POST["complete"]))?b'1':b'0';
 
@@ -66,7 +67,7 @@ function edit(){
     if (empty($_POST["txt"])) \crow\Header\redirect($GLOBALS["redirect_address"]);
 
     $id = $_GET["id"];
-    $safe_txt = $_POST["txt"];//scrub
+    $safe_txt = \crow\Auth\Scrub\textbox($_POST["txt"]);
     $is_group = (!empty($_POST["is_group"]))?b'1':b'0';
     $complete = (!empty($_POST["complete"]))?b'1':b'0';
 

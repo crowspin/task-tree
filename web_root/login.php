@@ -26,7 +26,7 @@ if ($_SESSION["login"]["failed_attempts"] >= 5){
     if (isset($_POST["submit"])){
         if (
             isset($_POST["un"])
-            && crow\Assert\strlen($_POST["un"], 1, 32)
+            && crow\Assert\strlen($_POST["un"], 2, 32)
             && isset($_POST["pw"])
             && crow\Assert\strlen($_POST["pw"], 8, 40)
         ){
@@ -36,6 +36,8 @@ if ($_SESSION["login"]["failed_attempts"] >= 5){
             $conn = crow\IO\SQLFactory::get();
             if (!$conn){
                 $ERROR_MESSAGE = crow\ErrorMsg::$_[0];
+                //maybe there's a way for us to create the whole database from outside? We'll look into it someday.
+                //before that, we ought to add verification and repairs for potentially missing _users table
             } else {
                 $data = $conn->query("SELECT * FROM _users WHERE `username`='%0' LIMIT 1", [$username]);
                 if ($data->success && count($data) == 1){
@@ -44,7 +46,7 @@ if ($_SESSION["login"]["failed_attempts"] >= 5){
                     if (password_verify($password, $data[$username]["password"])){
                         if (password_needs_rehash($data[$username]["password"], PASSWORD_DEFAULT, crow\PASSWORD_OPTIONS)){
                             $newHash = password_hash($password, PASSWORD_DEFAULT, crow\PASSWORD_OPTIONS);
-                            $q2 = $xS->query_clean("UPDATE _users SET `password`='%0' WHERE `username`='%1'", [$newHash, $username]);
+                            $q2 = $conn->query("UPDATE _users SET `password`='%0' WHERE `username`='%1'", [$newHash, $username]);
                             if (!$q2->success){
                                 //log password hash update failure, continue anyway.
                             }
